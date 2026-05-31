@@ -19,14 +19,9 @@ export default function DashboardPage() {
     setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1))
   }
   function nextMonth() {
-    const next = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1)
-    if (next <= new Date()) setSelectedMonth(next)
+    setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))
   }
 
-  const isCurrentMonth = (() => {
-    const now = new Date()
-    return selectedMonth.getFullYear() === now.getFullYear() && selectedMonth.getMonth() === now.getMonth()
-  })()
 
   return (
     <>
@@ -51,7 +46,7 @@ export default function DashboardPage() {
                 <ChevronLeft size={16} />
               </button>
               <span className="text-sm font-medium capitalize">{formatMonthYear(selectedMonth)}</span>
-              <button onClick={nextMonth} disabled={isCurrentMonth} className={`w-7 h-7 rounded-full bg-white/20 flex items-center justify-center ${isCurrentMonth ? 'opacity-30' : ''}`}>
+              <button onClick={nextMonth} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
                 <ChevronRight size={16} />
               </button>
             </div>
