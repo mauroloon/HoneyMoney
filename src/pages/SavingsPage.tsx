@@ -1,9 +1,30 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
 import { useFinance } from '../contexts/FinanceContext'
 import { formatCLP, formatCLPNumber, daysRemaining } from '../utils/format'
 import { sfToEmoji, PRESET_GOAL_ICONS, PRESET_COLORS } from '../utils/icons'
 import { SavingsGoal } from '../types'
+
+function PlusIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M12 5.5 L12 18.5 M5.5 12 L18.5 12" />
+    </svg>
+  )
+}
+function TrashIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+    </svg>
+  )
+}
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M6 6 L18 18 M18 6 L6 18" />
+    </svg>
+  )
+}
 
 export default function SavingsPage() {
   const { savingsGoals, addGoal, addToGoal, deleteGoal } = useFinance()
@@ -11,140 +32,152 @@ export default function SavingsPage() {
   const [depositGoal, setDepositGoal] = useState<SavingsGoal | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
+  const totalSaved = savingsGoals.reduce((s, g) => s + g.current_amount, 0)
+
   return (
     <>
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
-        <div className="px-4 pt-4 space-y-4">
+      <div className="flex-1 no-scrollbar" style={{ overflowY: 'auto', background: 'var(--bg)', paddingBottom: 120 }}>
+        <div style={{ padding: '52px 22px 0' }}>
+
+          {/* Page header */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
+            <div>
+              <p className="eyebrow" style={{ marginBottom: 4 }}>Ahorrando juntos</p>
+              <p className="font-serif" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)' }}>Metas</p>
+            </div>
+            {savingsGoals.length > 0 && (
+              <div style={{ textAlign: 'right' }}>
+                <p className="eyebrow" style={{ fontSize: 10, marginBottom: 2 }}>Total</p>
+                <p className="font-serif tnum" style={{ fontSize: 18, fontWeight: 600, color: 'var(--honey-ink)' }}>
+                  {formatCLP(totalSaved)}
+                </p>
+              </div>
+            )}
+          </div>
+
           {savingsGoals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="text-6xl mb-4">🎯</div>
-              <p className="text-lg font-semibold text-gray-800">Sin metas de ahorro</p>
-              <p className="text-sm text-gray-400 mt-2 px-8">Crea tu primera meta para empezar a ahorrar hacia tus objetivos</p>
+            <div style={{ textAlign: 'center', paddingTop: 60 }}>
+              <span style={{ display: 'block', width: 56, height: 56, borderRadius: '50%', background: 'var(--surface-2)', margin: '0 auto 16px' }} />
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>Sin metas de ahorro</p>
+              <p style={{ fontSize: 13.5, color: 'var(--muted)', marginBottom: 28, lineHeight: 1.5 }}>
+                Crea tu primera meta para empezar<br />a ahorrar hacia tus objetivos
+              </p>
               <button
                 onClick={() => setShowAdd(true)}
-                className="mt-6 flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-semibold text-sm shadow-fab"
+                style={{ border: 0, borderRadius: 999, padding: '14px 28px', background: 'var(--honey)', color: 'var(--on-honey)', fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 8px 24px -6px rgba(201,136,48,0.5)' }}
               >
-                <Plus size={16} /> Crear meta
+                Crear meta
               </button>
             </div>
           ) : (
-            savingsGoals.map(goal => {
-              const progress = goal.target_amount > 0 ? Math.min(goal.current_amount / goal.target_amount, 1) : 0
-              const pct = Math.round(progress * 100)
-              const remaining = Math.max(goal.target_amount - goal.current_amount, 0)
-              const completed = goal.current_amount >= goal.target_amount
-              const days = goal.deadline ? daysRemaining(goal.deadline) : null
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {savingsGoals.map(goal => {
+                const pct = goal.target_amount > 0 ? Math.min(goal.current_amount / goal.target_amount, 1) : 0
+                const pctDisplay = Math.round(pct * 100)
+                const remaining = Math.max(goal.target_amount - goal.current_amount, 0)
+                const completed = goal.current_amount >= goal.target_amount
+                const days = goal.deadline ? daysRemaining(goal.deadline) : null
 
-              return (
-                <div key={goal.id} className="bg-white rounded-3xl p-5 shadow-card">
-                  {/* Header */}
-                  <div className="flex items-start gap-3 mb-4">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
-                      style={{ backgroundColor: goal.color_hex + '22' }}
-                    >
-                      <span>{sfToEmoji(goal.icon)}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-gray-900 truncate">{goal.name}</p>
-                        {completed && <span className="text-primary text-sm">✅</span>}
+                return (
+                  <div key={goal.id} className="card-honey" style={{ padding: 20 }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13, marginBottom: 16 }}>
+                      {/* Tonal disc with emoji inside for goals (keeps goal identity) */}
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: goal.color_hex + '25', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, boxShadow: `0 0 0 5px ${goal.color_hex}18` }}>
+                        {sfToEmoji(goal.icon)}
                       </div>
-                      {days !== null && (
-                        <p className={`text-xs mt-0.5 ${days < 7 ? 'text-expense' : 'text-gray-400'}`}>
-                          {days === 0 ? '¡Hoy es el plazo!' : `${days} días restantes`}
+                      <div style={{ flex: 1 }}>
+                        <p className="font-serif" style={{ fontSize: 18, fontWeight: 500, color: 'var(--ink)', marginBottom: 2 }}>{goal.name}</p>
+                        <p style={{ fontSize: 12, color: days !== null && days < 60 ? 'var(--expense)' : 'var(--faint)' }}>
+                          {completed ? 'Meta alcanzada' : days !== null ? `${days} días restantes` : 'Sin fecha límite'}
                         </p>
-                      )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span className="font-serif tnum" style={{ fontSize: 24, fontWeight: 500, color: goal.color_hex }}>{pctDisplay}%</span>
+                        <button onClick={() => setConfirmDelete(goal.id)} style={{ width: 28, height: 28, borderRadius: '50%', border: 0, background: '#FDEEE9', color: 'var(--expense)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <TrashIcon />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-black" style={{ color: goal.color_hex }}>{pct}%</span>
+
+                    {/* Progress bar */}
+                    <div className="hm-track" style={{ height: 9, marginBottom: 16 }}>
+                      <span style={{ width: `${pctDisplay}%`, background: goal.color_hex }} />
+                    </div>
+
+                    {/* Amounts */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                      {[
+                        { label: 'Ahorrado', value: goal.current_amount, align: 'left' as const },
+                        { label: 'Faltan', value: remaining, align: 'center' as const, color: completed ? 'var(--income)' : 'var(--expense)' },
+                        { label: 'Meta', value: goal.target_amount, align: 'right' as const },
+                      ].map(x => (
+                        <div key={x.label} style={{ flex: 1, textAlign: x.align }}>
+                          <p className="eyebrow" style={{ fontSize: 10, marginBottom: 4 }}>{x.label}</p>
+                          <p className="font-serif tnum" style={{ fontSize: 13.5, fontWeight: 600, color: x.color ?? 'var(--ink)' }}>
+                            ${formatCLPNumber(x.value)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action */}
+                    {completed ? (
+                      <div style={{ textAlign: 'center', padding: '12px 0', borderRadius: 999, background: goal.color_hex + '20', color: goal.color_hex, fontSize: 13.5, fontWeight: 700 }}>
+                        Lo lograron ✓
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => setConfirmDelete(goal.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-red-50 text-expense"
+                        onClick={() => setDepositGoal(goal)}
+                        style={{ width: '100%', padding: '13px 0', borderRadius: 999, border: 0, fontSize: 14, fontFamily: 'var(--sans)', fontWeight: 600, cursor: 'pointer', background: goal.color_hex + '20', color: goal.color_hex }}
                       >
-                        <Trash2 size={13} />
+                        Abonar
                       </button>
-                    </div>
+                    )}
                   </div>
+                )
+              })}
 
-                  {/* Progress bar */}
-                  <div className="h-2.5 bg-gray-100 rounded-full mb-4 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, backgroundColor: goal.color_hex }}
-                    />
-                  </div>
-
-                  {/* Amounts */}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    <div>
-                      <p className="text-xs text-gray-400 mb-0.5">Ahorrado</p>
-                      <p className="text-sm font-bold text-gray-900">${formatCLPNumber(goal.current_amount)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-400 mb-0.5">Faltan</p>
-                      <p className={`text-sm font-bold ${completed ? 'text-primary' : 'text-expense'}`}>
-                        ${formatCLPNumber(remaining)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400 mb-0.5">Meta</p>
-                      <p className="text-sm font-bold text-gray-900">${formatCLPNumber(goal.target_amount)}</p>
-                    </div>
-                  </div>
-
-                  {/* Action */}
-                  {completed ? (
-                    <div className="flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-semibold text-primary bg-primary/10">
-                      🎉 ¡Meta alcanzada!
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setDepositGoal(goal)}
-                      className="w-full py-2.5 rounded-2xl text-sm font-semibold transition-all"
-                      style={{ backgroundColor: goal.color_hex + '22', color: goal.color_hex }}
-                    >
-                      + Abonar
-                    </button>
-                  )}
-                </div>
-              )
-            })
+              {/* Add new goal ghost button */}
+              <button
+                onClick={() => setShowAdd(true)}
+                style={{ width: '100%', padding: '15px 0', borderRadius: 999, border: '1.5px dashed var(--line)', background: 'transparent', color: 'var(--muted)', fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+              >
+                + Nueva meta
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      {/* FAB */}
       {savingsGoals.length > 0 && (
         <button
           onClick={() => setShowAdd(true)}
-          className="fixed bottom-24 right-5 w-14 h-14 bg-primary text-white rounded-full shadow-fab flex items-center justify-center z-10"
+          style={{ position: 'fixed', right: 22, bottom: 96, width: 56, height: 56, borderRadius: '50%', border: 0, background: 'var(--honey)', color: 'var(--on-honey)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, boxShadow: '0 10px 28px -8px rgba(201,136,48,0.55)' }}
         >
-          <Plus size={24} />
+          <PlusIcon />
         </button>
       )}
 
-      {/* Add Goal Modal */}
-      {showAdd && <AddGoalModal onClose={() => setShowAdd(false)} onSave={addGoal} />}
+      {showAdd && <AddGoalModal onClose={() => setShowAdd(false)} onSave={addGoal} CloseIcon={CloseIcon} />}
 
-      {/* Deposit Modal */}
       {depositGoal && (
         <DepositModal
           goal={depositGoal}
           onClose={() => setDepositGoal(null)}
           onDeposit={async (amount) => { await addToGoal(depositGoal.id, amount); setDepositGoal(null) }}
+          CloseIcon={CloseIcon}
         />
       )}
 
-      {/* Delete confirm */}
       {confirmDelete && (
         <div className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
-            <p className="font-semibold text-gray-900 text-center mb-1">¿Eliminar meta?</p>
-            <p className="text-sm text-gray-500 text-center mb-5">Esta acción no se puede deshacer.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-sm">Cancelar</button>
-              <button onClick={() => { deleteGoal(confirmDelete); setConfirmDelete(null) }} className="flex-1 py-3 rounded-2xl bg-expense text-white font-semibold text-sm">Eliminar</button>
+          <div className="card-honey w-full max-w-sm p-6">
+            <p className="font-serif" style={{ fontSize: 20, fontWeight: 500, textAlign: 'center', color: 'var(--ink)', marginBottom: 6 }}>¿Eliminar meta?</p>
+            <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', marginBottom: 22 }}>Esta acción no se puede deshacer.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: '14px 0', borderRadius: 999, border: 0, background: 'var(--surface-2)', color: 'var(--muted)', fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => { deleteGoal(confirmDelete); setConfirmDelete(null) }} style={{ flex: 1, padding: '14px 0', borderRadius: 999, border: 0, background: '#FDEEE9', color: 'var(--expense)', fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Eliminar</button>
             </div>
           </div>
         </div>
@@ -153,50 +186,53 @@ export default function SavingsPage() {
   )
 }
 
-// ── Deposit Modal ─────────────────────────────────────────
-function DepositModal({ goal, onClose, onDeposit }: {
-  goal: SavingsGoal
-  onClose: () => void
+function DepositModal({ goal, onClose, onDeposit, CloseIcon }: {
+  goal: SavingsGoal; onClose: () => void
   onDeposit: (amount: number) => Promise<void>
+  CloseIcon: () => JSX.Element
 }) {
   const [amount, setAmount] = useState('')
   const value = parseFloat(amount) || 0
+  const rest = Math.max(goal.target_amount - goal.current_amount, 0)
+  const quickAmounts = [25000, 50000, 100000]
 
   return (
-    <div className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-3" style={{ backgroundColor: goal.color_hex + '22' }}>
-            <span>{sfToEmoji(goal.icon)}</span>
+    <div className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center">
+      <div className="hm-sheet w-full max-w-sm" style={{ background: 'var(--bg)', borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px 14px', borderBottom: '1px solid var(--line-soft)', background: 'var(--surface)', borderTopLeftRadius: 32, borderTopRightRadius: 32 }}>
+          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: '50%', border: 0, background: 'var(--surface-2)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><CloseIcon /></button>
+          <span className="font-serif" style={{ fontSize: 18, fontWeight: 500, color: 'var(--ink)' }}>Abonar</span>
+          <div style={{ width: 34 }} />
+        </div>
+
+        <div style={{ padding: '22px 22px 28px' }}>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: goal.color_hex + '25', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, boxShadow: `0 0 0 5px ${goal.color_hex}18` }}>
+              {sfToEmoji(goal.icon)}
+            </div>
+            <p className="font-serif" style={{ fontSize: 19, fontWeight: 500, color: 'var(--ink)', marginBottom: 4 }}>{goal.name}</p>
+            <p style={{ fontSize: 13, color: 'var(--faint)' }}>Faltan {formatCLP(rest)}</p>
           </div>
-          <p className="font-bold text-gray-900 text-lg">{goal.name}</p>
-          <p className="text-sm text-gray-400">Faltan {formatCLP(Math.max(goal.target_amount - goal.current_amount, 0))}</p>
-        </div>
 
-        <p className="text-sm font-medium text-gray-700 text-center mb-3">¿Cuánto abonás?</p>
-        <div className="flex items-baseline justify-center gap-1 mb-6">
-          <span className="text-2xl text-gray-400 font-semibold">$</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            placeholder="0"
-            autoFocus
-            className="text-5xl font-black text-center text-gray-900 w-48"
-            style={{ border: 'none', borderBottom: `2px solid ${goal.color_hex}` }}
-          />
-        </div>
+          <div className="card-honey" style={{ padding: '20px 22px', marginBottom: 14, textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              <span className="font-serif" style={{ fontSize: 24, color: 'var(--faint)' }}>$</span>
+              <input className="font-serif tnum" type="number" inputMode="numeric" value={amount} autoFocus onChange={e => setAmount(e.target.value)} placeholder="0"
+                style={{ fontSize: 42, fontWeight: 500, textAlign: 'center', width: '66%', background: 'transparent', border: 0, outline: 0, fontFamily: 'var(--serif)', color: 'var(--ink)' }} />
+            </div>
+            <div style={{ height: 2, marginTop: 6, borderRadius: 2, background: goal.color_hex, opacity: 0.45 }} />
+          </div>
 
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-sm">Cancelar</button>
-          <button
-            onClick={() => value > 0 && onDeposit(value)}
-            disabled={value <= 0}
-            className="flex-1 py-3 rounded-2xl text-white font-semibold text-sm transition-all"
-            style={{ backgroundColor: value > 0 ? goal.color_hex : goal.color_hex + '66' }}
-          >
-            Abonar
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {quickAmounts.map(q => (
+              <button key={q} onClick={() => setAmount(String(q))} style={{ flex: 1, padding: '11px 0', borderRadius: 999, border: 0, background: 'var(--surface-2)', color: 'var(--muted)', fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>
+                +{formatCLPNumber(q)}
+              </button>
+            ))}
+          </div>
+
+          <button onClick={() => value > 0 && onDeposit(value)} disabled={value <= 0} style={{ width: '100%', padding: '16px 0', borderRadius: 999, border: 0, fontSize: 15, fontFamily: 'var(--sans)', fontWeight: 700, cursor: value > 0 ? 'pointer' : 'default', background: goal.color_hex, color: 'var(--on-honey)', opacity: value > 0 ? 1 : 0.38 }}>
+            Confirmar abono
           </button>
         </div>
       </div>
@@ -204,10 +240,10 @@ function DepositModal({ goal, onClose, onDeposit }: {
   )
 }
 
-// ── Add Goal Modal ────────────────────────────────────────
-function AddGoalModal({ onClose, onSave }: {
+function AddGoalModal({ onClose, onSave, CloseIcon }: {
   onClose: () => void
   onSave: (g: { name: string; target_amount: number; current_amount: number; deadline?: string | null; icon: string; color_hex: string }) => Promise<void>
+  CloseIcon: () => JSX.Element
 }) {
   const [name, setName]         = useState('')
   const [target, setTarget]     = useState('')
@@ -215,7 +251,7 @@ function AddGoalModal({ onClose, onSave }: {
   const [hasDeadline, setHasDeadline] = useState(false)
   const [deadline, setDeadline] = useState('')
   const [icon, setIcon]         = useState('✈️')
-  const [color, setColor]       = useState('#00C57A')
+  const [color, setColor]       = useState(PRESET_COLORS[0])
   const [saving, setSaving]     = useState(false)
 
   const isValid = name.trim().length > 0 && parseFloat(target) > 0
@@ -223,85 +259,75 @@ function AddGoalModal({ onClose, onSave }: {
   async function handleSave() {
     if (!isValid) return
     setSaving(true)
-    await onSave({
-      name: name.trim(),
-      target_amount: parseFloat(target),
-      current_amount: parseFloat(current) || 0,
-      deadline: hasDeadline && deadline ? new Date(deadline).toISOString() : null,
-      icon,
-      color_hex: color,
-    })
+    await onSave({ name: name.trim(), target_amount: parseFloat(target), current_amount: parseFloat(current) || 0, deadline: hasDeadline && deadline ? new Date(deadline).toISOString() : null, icon, color_hex: color })
     setSaving(false)
     onClose()
   }
 
   return (
     <div className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center">
-      <div className="bg-bg-base rounded-t-3xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 bg-white rounded-t-3xl border-b border-gray-100">
-          <button onClick={onClose} className="text-gray-500 text-sm">Cancelar</button>
-          <span className="font-semibold text-gray-900">Nueva meta</span>
-          <button onClick={handleSave} disabled={!isValid || saving} className={`text-sm font-bold ${isValid ? 'text-primary' : 'text-gray-300'}`}>
+      <div className="hm-sheet w-full max-w-sm flex flex-col" style={{ background: 'var(--bg)', borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: '92vh', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px 14px', flexShrink: 0, borderBottom: '1px solid var(--line-soft)', background: 'var(--surface)', borderTopLeftRadius: 32, borderTopRightRadius: 32 }}>
+          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: '50%', border: 0, background: 'var(--surface-2)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><CloseIcon /></button>
+          <span className="font-serif" style={{ fontSize: 18, fontWeight: 500, color: 'var(--ink)' }}>Nueva meta</span>
+          <button onClick={handleSave} disabled={!isValid || saving} style={{ border: 0, background: 'transparent', fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 14, color: isValid ? 'var(--honey-ink)' : 'var(--faint)', cursor: isValid ? 'pointer' : 'default' }}>
             {saving ? '...' : 'Crear'}
           </button>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Name */}
-          <div className="bg-white rounded-2xl px-4 py-3 shadow-card">
-            <p className="text-xs text-gray-400 mb-1">¿Para qué estás ahorrando?</p>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Vacaciones, Auto..." className="w-full text-sm text-gray-900 placeholder-gray-400" />
+          <div className="card-honey" style={{ padding: '14px 18px' }}>
+            <p className="eyebrow" style={{ marginBottom: 8 }}>¿Para qué están ahorrando?</p>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Vacaciones, Auto..." style={{ width: '100%', background: 'transparent', border: 0, outline: 0, fontFamily: 'var(--sans)', fontSize: 15, color: 'var(--ink)' }} autoFocus />
           </div>
 
           {/* Amounts */}
-          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-              <span className="text-xs text-gray-500 w-24 flex-shrink-0">Meta ($)</span>
-              <input type="number" inputMode="numeric" value={target} onChange={e => setTarget(e.target.value)} placeholder="0" className="flex-1 text-sm text-right text-gray-900 placeholder-gray-400" />
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3">
-              <span className="text-xs text-gray-500 w-24 flex-shrink-0">Ya ahorré ($)</span>
-              <input type="number" inputMode="numeric" value={current} onChange={e => setCurrent(e.target.value)} placeholder="0" className="flex-1 text-sm text-right text-gray-900 placeholder-gray-400" />
-            </div>
+          <div className="card-honey" style={{ overflow: 'hidden' }}>
+            {[
+              { label: 'Meta ($)', val: target, set: setTarget },
+              { label: 'Ya ahorré ($)', val: current, set: setCurrent, last: true },
+            ].map((f) => (
+              <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: f.last ? 0 : '1px solid var(--line-soft)' }}>
+                <span style={{ fontSize: 13, color: 'var(--muted)', flex: 1 }}>{f.label}</span>
+                <input type="number" inputMode="numeric" value={f.val} onChange={e => f.set(e.target.value)} placeholder="0" style={{ background: 'transparent', border: 0, outline: 0, fontFamily: 'var(--serif)', fontSize: 16, color: 'var(--ink)', textAlign: 'right', width: 120 }} />
+              </div>
+            ))}
           </div>
 
           {/* Deadline */}
-          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <span className="text-sm text-gray-700">Fecha límite</span>
-              <button onClick={() => setHasDeadline(v => !v)} className={`w-11 h-6 rounded-full transition-all relative ${hasDeadline ? 'bg-primary' : 'bg-gray-200'}`}>
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${hasDeadline ? 'left-5' : 'left-0.5'}`} />
+          <div className="card-honey" style={{ overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: hasDeadline ? '1px solid var(--line-soft)' : 0 }}>
+              <span style={{ fontSize: 13.5, color: 'var(--muted)' }}>Fecha límite</span>
+              <button onClick={() => setHasDeadline(v => !v)} style={{ width: 44, height: 24, borderRadius: 999, border: 0, position: 'relative', cursor: 'pointer', background: hasDeadline ? 'var(--honey)' : 'var(--surface-2)', transition: 'background 0.2s' }}>
+                <span style={{ position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%', background: 'var(--surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s', left: hasDeadline ? 22 : 2 }} />
               </button>
             </div>
             {hasDeadline && (
-              <div className="px-4 py-3">
-                <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full text-sm text-gray-700" />
+              <div style={{ padding: '12px 18px' }}>
+                <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} min={new Date().toISOString().split('T')[0]} style={{ background: 'transparent', border: 0, outline: 0, fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--ink)' }} />
               </div>
             )}
           </div>
 
           {/* Icon picker */}
-          <div className="bg-white rounded-2xl p-4 shadow-card">
-            <p className="text-xs text-gray-400 mb-3">Ícono</p>
-            <div className="grid grid-cols-6 gap-2">
-              {PRESET_GOAL_ICONS.map(i => (
-                <button key={i} onClick={() => setIcon(i)} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${icon === i ? 'shadow-sm scale-110' : 'bg-gray-100'}`}
-                  style={icon === i ? { backgroundColor: color + '33' } : {}}>
-                  {i}
+          <div className="card-honey" style={{ padding: 16 }}>
+            <p className="eyebrow" style={{ marginBottom: 12 }}>Ícono</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
+              {PRESET_GOAL_ICONS.map(ic => (
+                <button key={ic} onClick={() => setIcon(ic)} style={{ border: 0, cursor: 'pointer', width: '100%', aspectRatio: '1', borderRadius: 12, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', background: icon === ic ? color + '30' : 'var(--surface-2)', transition: 'all 0.15s', transform: icon === ic ? 'scale(1.1)' : 'scale(1)' }}>
+                  {ic}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Color picker */}
-          <div className="bg-white rounded-2xl p-4 shadow-card">
-            <p className="text-xs text-gray-400 mb-3">Color</p>
-            <div className="grid grid-cols-6 gap-2">
+          <div className="card-honey" style={{ padding: 16 }}>
+            <p className="eyebrow" style={{ marginBottom: 12 }}>Color</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
               {PRESET_COLORS.map(c => (
-                <button key={c} onClick={() => setColor(c)} className="w-9 h-9 rounded-full flex items-center justify-center transition-all" style={{ backgroundColor: c }}>
-                  {color === c && <span className="text-white text-xs font-bold">✓</span>}
-                </button>
+                <button key={c} onClick={() => setColor(c)} style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', border: 0, cursor: 'pointer', background: c, boxShadow: color === c ? `0 0 0 3px var(--surface), 0 0 0 5px ${c}` : 'none', transition: 'box-shadow 0.15s' }} />
               ))}
             </div>
           </div>

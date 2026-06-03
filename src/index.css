@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   HoneyMoney — sistema de diseño · dirección Miel suave
+   ============================================================ */
+
+:root {
+  --serif: "Newsreader", Georgia, serif;
+  --sans:  "Hanken Grotesk", -apple-system, system-ui, sans-serif;
+
+  /* Miel suave palette */
+  --bg:        #F5EDDA;
+  --surface:   #FDFAF5;
+  --surface-2: #EDE3CC;
+  --ink:       #33200E;
+  --muted:     #6B5038;
+  --faint:     #9E7A55;
+  --line:      #DFD4BC;
+  --line-soft: #E8DFC8;
+  --honey:     #C98830;
+  --honey-mid: #D4962A;
+  --honey-ink: #7A5018;
+  --income:    #3D8A5A;
+  --expense:   #BF5030;
+  --on-honey:  #33200E;
+
+  --radius:    24px;
+  --radius-lg: 34px;
+  --card-shadow: 0 2px 6px rgba(120,80,20,0.06), 0 18px 40px -22px rgba(150,100,30,0.36);
+  --card-border: 1px solid transparent;
+  --tab-bg: rgba(253,250,245,0.82);
+}
+
+/* ── Base ─────────────────────────────────────── */
 * {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
@@ -9,40 +41,102 @@
 
 html, body, #root {
   height: 100%;
-  background: #F2F2F7;
+  background: var(--bg);
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  font-family: var(--sans);
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  color: var(--ink);
 }
 
-/* iOS-style scrolling */
-.scroll-smooth {
-  -webkit-overflow-scrolling: touch;
+/* ── Typography ───────────────────────────────── */
+.font-serif { font-family: var(--serif) !important; }
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+.eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-weight: 600;
+  font-family: var(--sans);
 }
 
-/* Hide scrollbar but keep scroll */
+/* ── Scrolling ────────────────────────────────── */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Bottom nav safe area */
+/* ── Safe area ────────────────────────────────── */
 .pb-safe {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
-/* Modal backdrop */
+/* ── Modal backdrop ───────────────────────────── */
 .modal-backdrop {
-  background: rgba(0,0,0,0.4);
+  background: rgba(30, 16, 4, 0.44);
   backdrop-filter: blur(4px);
 }
 
-/* Input focus */
-input:focus, textarea:focus {
-  outline: none;
+/* ── Segmented control ────────────────────────── */
+.seg {
+  display: flex;
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+.seg button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 10px 0;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.seg button[data-on="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(120,80,20,0.14);
 }
 
-/* Transition defaults */
+/* ── Progress track ───────────────────────────── */
+.hm-track {
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.hm-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Animations ───────────────────────────────── */
+@keyframes hm-rise {
+  from { transform: translateY(10px); opacity: 0.7; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.rise { animation: hm-rise 0.4s cubic-bezier(.2,.7,.3,1) both; }
+
+@keyframes hm-sheet {
+  from { transform: translateY(36px); }
+  to   { transform: translateY(0); }
+}
+.hm-sheet { animation: hm-sheet 0.38s cubic-bezier(.2,.8,.2,1) both; }
+
+/* ── Input reset ──────────────────────────────── */
+input:focus, textarea:focus { outline: none; }
+
+/* ── Transitions ──────────────────────────────── */
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);

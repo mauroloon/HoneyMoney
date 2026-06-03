@@ -1,13 +1,62 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useWallet } from '../contexts/WalletContext'
 import { useFinance } from '../contexts/FinanceContext'
 import { formatCLP, formatCLPNumber, formatDate, formatMonthYear, greeting } from '../utils/format'
-import { sfToEmoji } from '../utils/icons'
 import AddTransactionModal from '../components/AddTransactionModal'
+
+// Tonal disc — colored circle, no emoji/glyph
+function Disc({ color, size = 40, ring = false }: { color: string; size?: number; ring?: boolean }) {
+  return (
+    <span style={{
+      display: 'inline-block', flexShrink: 0,
+      width: size, height: size, borderRadius: '50%',
+      background: color,
+      boxShadow: ring ? `0 0 0 5px ${color}30` : 'none',
+    }} />
+  )
+}
+
+// Inline SVG chevrons for month navigation
+function ChevLeft() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M14.5 5 L7.5 12 L14.5 19" />
+    </svg>
+  )
+}
+function ChevRight() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M9.5 5 L16.5 12 L9.5 19" />
+    </svg>
+  )
+}
+function InflowIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 7 L7 17 M7 10.5 L7 17 L13.5 17" />
+    </svg>
+  )
+}
+function OutflowIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 17 L17 7 M10.5 7 L17 7 L17 13.5" />
+    </svg>
+  )
+}
+function PlusIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M12 5.5 L12 18.5 M5.5 12 L18.5 12" />
+    </svg>
+  )
+}
 
 export default function DashboardPage() {
   const { profile } = useAuth()
+  const { active: wallet } = useWallet()
   const {
     monthlyIncome, monthlyExpenses, monthlyBalance,
     expensesByCategory, recentTransactions,
@@ -22,67 +71,93 @@ export default function DashboardPage() {
     setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))
   }
 
+  const balanceColor = monthlyBalance < 0 ? 'var(--expense)' : 'var(--ink)'
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
-        <div className="px-4 pt-4 space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between">
+      <div className="flex-1 no-scrollbar" style={{ overflowY: 'auto', paddingBottom: 120 }}>
+        <div style={{ padding: '52px 22px 0' }}>
+
+          {/* Header: greeting + wallet name */}
+          <div className="rise" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
             <div>
-              <p className="font-semibold text-gray-900">{greeting()}</p>
-              <p className="text-xs text-gray-500">{profile?.display_name ?? 'Tu resumen financiero'}</p>
+              <p className="eyebrow">{greeting()}</p>
+              <p className="font-serif" style={{ fontSize: 22, fontWeight: 500, marginTop: 4, color: 'var(--ink)' }}>
+                {wallet?.name ?? profile?.display_name ?? 'Mi billetera'}
+              </p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-xl font-black text-primary">$</span>
+            {/* Abstract pair avatar */}
+            <div style={{ display: 'flex' }}>
+              {[0, 1].map(i => (
+                <span key={i} style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  background: i === 0 ? 'var(--honey)' : 'var(--surface-2)',
+                  border: '2px solid var(--bg)',
+                  marginLeft: i ? -10 : 0,
+                  display: 'inline-block',
+                }} />
+              ))}
             </div>
           </div>
 
-          {/* Balance Card */}
-          <div className="bg-gradient-to-br from-primary to-primary-dark rounded-3xl p-5 text-white shadow-fab">
+          {/* Balance card */}
+          <div className="card-honey rise" style={{ padding: 22, marginBottom: 26 }}>
             {/* Month selector */}
-            <div className="flex items-center justify-between mb-4">
-              <button onClick={prevMonth} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                <ChevronLeft size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <button onClick={prevMonth} style={{ width: 32, height: 32, borderRadius: '50%', border: 0, background: 'var(--surface-2)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <ChevLeft />
               </button>
-              <span className="text-sm font-medium capitalize">{formatMonthYear(selectedMonth)}</span>
-              <button onClick={nextMonth} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                <ChevronRight size={16} />
+              <span className="font-serif" style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', letterSpacing: '0.01em', textTransform: 'capitalize' }}>
+                {formatMonthYear(selectedMonth)}
+              </span>
+              <button onClick={nextMonth} style={{ width: 32, height: 32, borderRadius: '50%', border: 0, background: 'var(--surface-2)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <ChevRight />
               </button>
             </div>
 
-            <p className="text-white/70 text-xs mb-1">Balance del mes</p>
-            <p className={`text-4xl font-black mb-4 ${monthlyBalance < 0 ? 'text-red-200' : 'text-white'}`}>
-              {formatCLP(monthlyBalance)}
-            </p>
+            {/* Balance amount in serif */}
+            <div style={{ textAlign: 'center', padding: '6px 0 20px' }}>
+              <p className="eyebrow" style={{ marginBottom: 10 }}>Balance del mes</p>
+              <p className="font-serif tnum" style={{ fontSize: 48, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1, color: balanceColor }}>
+                {monthlyBalance < 0 ? '−' : '+'}{formatCLP(Math.abs(monthlyBalance))}
+              </p>
+            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/15 rounded-2xl p-3">
-                <p className="text-white/70 text-xs mb-1">↓ Ingresos</p>
-                <p className="font-bold text-sm">{formatCLP(monthlyIncome)}</p>
-              </div>
-              <div className="bg-white/15 rounded-2xl p-3">
-                <p className="text-white/70 text-xs mb-1">↑ Gastos</p>
-                <p className="font-bold text-sm">{formatCLP(monthlyExpenses)}</p>
-              </div>
+            {/* Income / Expenses row */}
+            <div style={{ display: 'flex', borderTop: '1px solid var(--line-soft)', paddingTop: 16 }}>
+              {[
+                { label: 'Ingresos', value: monthlyIncome, color: 'var(--income)', Icon: InflowIcon },
+                { label: 'Gastos',   value: monthlyExpenses, color: 'var(--expense)', Icon: OutflowIcon },
+              ].map((x, i) => (
+                <div key={x.label} style={{ flex: 1, paddingLeft: i ? 20 : 0, borderLeft: i ? '1px solid var(--line-soft)' : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: x.color, marginBottom: 6 }}>
+                    <x.Icon />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{x.label}</span>
+                  </div>
+                  <p className="font-serif tnum" style={{ fontSize: 18, fontWeight: 500, color: 'var(--ink)' }}>
+                    {formatCLP(x.value)}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Top expenses by category */}
           {expensesByCategory.length > 0 && (
-            <section>
-              <h2 className="font-semibold text-gray-900 mb-3">Gastos por categoría</h2>
-              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+            <section style={{ marginBottom: 28 }}>
+              <p className="eyebrow" style={{ marginBottom: 14 }}>Dónde se fue</p>
+              <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }} className="no-scrollbar">
                 {expensesByCategory.slice(0, 6).map(({ category, total }) => (
-                  <div key={category.id} className="flex-shrink-0 flex flex-col items-center gap-1.5 bg-white rounded-2xl px-3 py-3 shadow-card w-[80px]">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-                      style={{ backgroundColor: category.color_hex + '22' }}
-                    >
-                      <span>{sfToEmoji(category.icon)}</span>
+                  <div key={category.id} className="card-honey" style={{ flexShrink: 0, width: 88, padding: '16px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                    <Disc color={category.color_hex} size={36} ring />
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 68 }}>
+                        {category.name}
+                      </p>
+                      <p className="font-serif tnum" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>
+                        ${formatCLPNumber(total)}
+                      </p>
                     </div>
-                    <span className="text-xs text-gray-500 text-center leading-tight line-clamp-1">{category.name}</span>
-                    <span className="text-xs font-bold text-gray-900">${formatCLPNumber(total)}</span>
                   </div>
                 ))}
               </div>
@@ -91,36 +166,39 @@ export default function DashboardPage() {
 
           {/* Recent transactions */}
           <section>
-            <h2 className="font-semibold text-gray-900 mb-3">Últimas transacciones</h2>
+            <p className="eyebrow" style={{ marginBottom: 14 }}>Movimientos recientes</p>
             {recentTransactions.length === 0 ? (
-              <div className="bg-white rounded-3xl p-10 text-center shadow-card">
-                <div className="text-4xl mb-3">📭</div>
-                <p className="text-sm font-medium text-gray-700">Sin transacciones aún</p>
-                <p className="text-xs text-gray-400 mt-1">Toca + para registrar tu primer movimiento</p>
+              <div className="card-honey" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--surface-2)', margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ display: 'block', width: 16, height: 16, borderRadius: '50%', background: 'var(--faint)' }} />
+                </div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Sin transacciones aún</p>
+                <p style={{ fontSize: 12.5, color: 'var(--muted)' }}>Toca + para registrar tu primer movimiento</p>
               </div>
             ) : (
-              <div className="bg-white rounded-3xl shadow-card overflow-hidden">
+              <div className="card-honey" style={{ overflow: 'hidden' }}>
                 {recentTransactions.map((t, i) => {
                   const cat = categoryById(t.category_id)
+                  const isIncome = t.type === 'income'
                   return (
                     <div key={t.id}>
-                      <div className="flex items-center gap-3 px-4 py-3">
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                          style={{ backgroundColor: (cat?.color_hex ?? '#8E8E93') + '22' }}
-                        >
-                          <span>{sfToEmoji(cat?.icon ?? '•••')}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px' }}>
+                        <Disc color={cat?.color_hex ?? '#9E7A55'} size={38} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {cat?.name ?? 'Sin categoría'}
+                          </p>
+                          <p style={{ fontSize: 12, color: 'var(--faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t.note ? `${t.note} · ` : ''}{formatDate(t.date)}
+                          </p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{cat?.name ?? 'Sin categoría'}</p>
-                          {t.note && <p className="text-xs text-gray-400 truncate">{t.note}</p>}
-                          <p className="text-xs text-gray-400">{formatDate(t.date)}</p>
-                        </div>
-                        <span className={`text-sm font-bold flex-shrink-0 ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
-                          {t.type === 'income' ? '+' : '-'}{formatCLP(t.amount)}
-                        </span>
+                        <p className="font-serif tnum" style={{ fontSize: 15, fontWeight: 600, flexShrink: 0, color: isIncome ? 'var(--income)' : 'var(--ink)' }}>
+                          {isIncome ? '+' : '−'}{formatCLP(t.amount)}
+                        </p>
                       </div>
-                      {i < recentTransactions.length - 1 && <div className="h-px bg-gray-100 ml-16" />}
+                      {i < recentTransactions.length - 1 && (
+                        <div style={{ height: 1, background: 'var(--line-soft)', marginLeft: 70 }} />
+                      )}
                     </div>
                   )
                 })}
@@ -133,10 +211,16 @@ export default function DashboardPage() {
       {/* FAB */}
       <button
         onClick={() => setShowAdd(true)}
-        className="fixed bottom-24 right-5 flex items-center gap-2 bg-primary text-white px-5 py-3.5 rounded-full shadow-fab font-semibold text-sm z-10"
+        style={{
+          position: 'fixed', right: 22, bottom: 96,
+          width: 56, height: 56, borderRadius: '50%', border: 0,
+          background: 'var(--honey)', color: 'var(--on-honey)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', zIndex: 10,
+          boxShadow: '0 10px 28px -8px rgba(201,136,48,0.55)',
+        }}
       >
-        <span className="text-lg leading-none">+</span>
-        Registrar
+        <PlusIcon />
       </button>
 
       {showAdd && <AddTransactionModal onClose={() => setShowAdd(false)} />}

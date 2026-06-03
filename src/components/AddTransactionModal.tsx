@@ -3,10 +3,17 @@ import { useAuth } from '../contexts/AuthContext'
 import { useWallet } from '../contexts/WalletContext'
 import { useFinance } from '../contexts/FinanceContext'
 import { formatCLP } from '../utils/format'
-import { sfToEmoji } from '../utils/icons'
 import { TransactionType, Category } from '../types'
 
 interface Props { onClose: () => void }
+
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M6 6 L18 18 M18 6 L6 18" />
+    </svg>
+  )
+}
 
 export default function AddTransactionModal({ onClose }: Props) {
   const { user } = useAuth()
@@ -40,110 +47,135 @@ export default function AddTransactionModal({ onClose }: Props) {
     onClose()
   }
 
+  const accentColor = type === 'income' ? 'var(--income)' : 'var(--expense)'
+
   return (
-    <div className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center">
-      <div className="bg-bg-base rounded-t-3xl w-full max-w-sm max-h-[92vh] flex flex-col shadow-2xl">
+    <div
+      className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="hm-sheet w-full max-w-sm flex flex-col"
+        style={{
+          background: 'var(--bg)', borderTopLeftRadius: 32, borderTopRightRadius: 32,
+          maxHeight: '92vh', overflow: 'hidden',
+          boxShadow: '0 -4px 40px rgba(80,48,16,0.20)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 bg-white rounded-t-3xl border-b border-gray-100 flex-shrink-0">
-          <button onClick={onClose} className="text-gray-500 text-sm">Cancelar</button>
-          <span className="font-semibold text-gray-900">Nueva transacción</span>
-          <button onClick={handleSave} disabled={!isValid || saving}
-            className={`text-sm font-bold ${isValid ? 'text-primary' : 'text-gray-300'}`}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px 22px 14px', flexShrink: 0,
+          borderBottom: '1px solid var(--line-soft)',
+          background: 'var(--surface)',
+          borderTopLeftRadius: 32, borderTopRightRadius: 32,
+        }}>
+          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: '50%', border: 0, background: 'var(--surface-2)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <CloseIcon />
+          </button>
+          <span className="font-serif" style={{ fontSize: 18, fontWeight: 500, color: 'var(--ink)' }}>Nuevo movimiento</span>
+          <button
+            onClick={handleSave}
+            disabled={!isValid || saving}
+            style={{ border: 0, background: 'transparent', fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 14, color: isValid ? 'var(--honey-ink)' : 'var(--faint)', cursor: isValid ? 'pointer' : 'default' }}
+          >
             {saving ? '...' : 'Guardar'}
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 22px 28px' }}>
           {/* Type toggle */}
-          <div className="px-4 pt-4">
-            <div className="flex bg-gray-200 rounded-2xl p-1">
-              {(['expense', 'income'] as TransactionType[]).map(t => (
-                <button
-                  key={t}
-                  onClick={() => { setType(t); setCategory(null) }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                  style={type === t ? {
-                    backgroundColor: t === 'income' ? '#34C759' : '#FF3B30',
-                    color: 'white',
-                  } : { color: '#8E8E93' }}
-                >
-                  {t === 'income' ? '↓ Ingreso' : '↑ Gasto'}
-                </button>
-              ))}
-            </div>
+          <div className="seg" style={{ marginTop: 18, marginBottom: 16 }}>
+            {(['expense', 'income'] as TransactionType[]).map(t => (
+              <button
+                key={t}
+                data-on={String(type === t)}
+                onClick={() => { setType(t); setCategory(null) }}
+              >
+                {t === 'income' ? 'Ingreso' : 'Gasto'}
+              </button>
+            ))}
           </div>
 
-          {/* Amount */}
-          <div className="px-4 pt-4 pb-2">
-            <div className="bg-white rounded-3xl p-4 shadow-card">
-              <p className="text-xs text-gray-400 mb-2">Monto</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl text-gray-400 font-semibold">$</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  placeholder="0"
-                  autoFocus
-                  className="flex-1 text-5xl font-black text-gray-900 placeholder-gray-200 bg-transparent"
-                />
-              </div>
-              {numAmount > 0 && (
-                <p className="text-xs text-gray-400 mt-1">{formatCLP(numAmount)}</p>
-              )}
-              <div className="h-0.5 mt-2 rounded-full" style={{ backgroundColor: type === 'income' ? '#34C759' : '#FF3B30' }} />
+          {/* Amount — serif */}
+          <div className="card-honey" style={{ padding: '20px 22px', marginBottom: 14, textAlign: 'center' }}>
+            <p className="eyebrow" style={{ marginBottom: 12 }}>Monto</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              <span className="font-serif" style={{ fontSize: 28, color: 'var(--faint)' }}>$</span>
+              <input
+                className="font-serif tnum"
+                type="number"
+                inputMode="numeric"
+                value={amount}
+                autoFocus
+                onChange={e => setAmount(e.target.value)}
+                placeholder="0"
+                style={{
+                  fontSize: 46, fontWeight: 500, textAlign: 'center', width: '70%',
+                  background: 'transparent', border: 0, outline: 0,
+                  fontFamily: 'var(--serif)', color: 'var(--ink)',
+                }}
+              />
             </div>
+            {numAmount > 0 && (
+              <p style={{ fontSize: 12, color: 'var(--faint)', marginTop: 4 }}>{formatCLP(numAmount)}</p>
+            )}
+            <div style={{ height: 2, marginTop: 8, borderRadius: 2, background: accentColor, opacity: 0.45 }} />
           </div>
 
-          {/* Category */}
-          <div className="px-4 pb-3">
-            <div className="bg-white rounded-3xl p-4 shadow-card">
-              <p className="text-xs text-gray-400 mb-3">🏷️ Categoría</p>
-              <div className="grid grid-cols-4 gap-2">
-                {categories.map(cat => {
-                  const sel = category?.id === cat.id
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setCategory(cat)}
-                      className="flex flex-col items-center gap-1 relative"
-                    >
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all"
-                        style={{ backgroundColor: sel ? cat.color_hex : cat.color_hex + '22' }}
-                      >
-                        <span>{sfToEmoji(cat.icon)}</span>
-                      </div>
-                      {sel && (
-                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold"
-                          style={{ backgroundColor: cat.color_hex, fontSize: 9 }}>✓</span>
-                      )}
-                      <span className="text-xs text-gray-500 line-clamp-1 text-center w-full" style={{ fontSize: 10 }}>
-                        {cat.name}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+          {/* Category — tonal discs */}
+          <div className="card-honey" style={{ padding: 18, marginBottom: 14 }}>
+            <p className="eyebrow" style={{ marginBottom: 14 }}>Categoría</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+              {categories.map(cat => {
+                const sel = category?.id === cat.id
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCategory(cat)}
+                    style={{ border: 0, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}
+                  >
+                    <span style={{
+                      display: 'block', width: 44, height: 44, borderRadius: '50%',
+                      background: cat.color_hex,
+                      boxShadow: sel ? `0 0 0 3px var(--surface), 0 0 0 5px ${cat.color_hex}` : 'none',
+                      opacity: sel ? 1 : 0.72,
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                    }} />
+                    <span style={{ fontSize: 10.5, color: sel ? 'var(--ink)' : 'var(--faint)', fontWeight: sel ? 600 : 500, textAlign: 'center', lineHeight: 1.2 }}>
+                      {cat.name}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           {/* Details */}
-          <div className="px-4 pb-6">
-            <div className="bg-white rounded-3xl shadow-card overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-sm">📅</span>
-                <span className="text-sm text-gray-700 flex-shrink-0">Fecha</span>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                  className="flex-1 text-sm text-primary text-right bg-transparent" />
-              </div>
-              <div className="flex items-start gap-3 px-4 py-3">
-                <span className="text-sm mt-0.5">📝</span>
-                <span className="text-sm text-gray-700 flex-shrink-0 mt-0.5">Nota</span>
-                <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Opcional"
-                  rows={1} className="flex-1 text-sm text-gray-900 placeholder-gray-400 text-right bg-transparent resize-none" />
-              </div>
+          <div className="card-honey" style={{ overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px', borderBottom: '1px solid var(--line-soft)' }}>
+              <span style={{ fontSize: 13.5, color: 'var(--muted)' }}>Fecha</span>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                style={{ background: 'transparent', border: 0, outline: 0, fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--honey-ink)', fontWeight: 600, textAlign: 'right' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px', gap: 12 }}>
+              <span style={{ fontSize: 13.5, color: 'var(--muted)', flexShrink: 0 }}>Nota</span>
+              <input
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Opcional"
+                style={{
+                  background: 'transparent', border: 0, outline: 0,
+                  fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--ink)',
+                  textAlign: 'right', flex: 1,
+                }}
+              />
             </div>
           </div>
         </div>
