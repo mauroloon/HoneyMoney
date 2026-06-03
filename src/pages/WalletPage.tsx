@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Copy, Check, LogOut, Plus, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Copy, Check, LogOut, Plus, Users, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useWallet } from '../contexts/WalletContext'
 import { Wallet } from '../types'
 
 export default function WalletPage() {
+  const navigate = useNavigate()
   const { profile, signOut } = useAuth()
   const { wallets, active, setActive, createWallet, joinWallet, leaveWallet } = useWallet()
   const [showCreate, setShowCreate] = useState(false)
@@ -107,6 +109,18 @@ export default function WalletPage() {
               <p className="text-sm text-gray-400 mt-1">Crea una billetera o únete a la de tu pareja</p>
             </div>
           )}
+
+          {/* Settings */}
+          <div className="bg-white rounded-3xl shadow-card overflow-hidden">
+            <button
+              onClick={() => navigate('/categories')}
+              className="w-full flex items-center gap-3 px-4 py-3.5"
+            >
+              <span className="text-xl">🏷️</span>
+              <span className="flex-1 text-sm font-medium text-gray-900 text-left">Gestionar categorías</span>
+              <ChevronRight size={16} className="text-gray-400" />
+            </button>
+          </div>
 
           {/* Actions */}
           <div className="space-y-2">
