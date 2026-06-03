@@ -26,8 +26,10 @@ interface FinanceState {
 
   // Actions
   addTransaction: (t: TransactionInsert) => Promise<void>
+  updateTransaction: (id: string, updates: Partial<TransactionInsert>) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
   addCategory: (c: Omit<CategoryInsert, 'wallet_id'>) => Promise<void>
+  updateCategory: (id: string, updates: Partial<Omit<CategoryInsert, 'wallet_id'>>) => Promise<void>
   deleteCategory: (id: string) => Promise<void>
   addGoal: (g: Omit<SavingsGoalInsert, 'wallet_id'>) => Promise<void>
   addToGoal: (id: string, amount: number) => Promise<void>
@@ -110,6 +112,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (data) setTransactions(prev => [data, ...prev])
   }
 
+  async function updateTransaction(id: string, updates: Partial<TransactionInsert>) {
+    const { data, error } = await supabase.from('transactions').update(updates).eq('id', id).select().single()
+    if (error) throw error
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
+  }
+
   async function deleteTransaction(id: string) {
     await supabase.from('transactions').delete().eq('id', id)
     setTransactions(prev => prev.filter(t => t.id !== id))
@@ -119,6 +127,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (!wallet) return
     const { data } = await supabase.from('categories').insert({ ...c, wallet_id: wallet.id }).select().single()
     if (data) setCategories(prev => [...prev, data])
+  }
+
+  async function updateCategory(id: string, updates: Partial<Omit<CategoryInsert, 'wallet_id'>>) {
+    const { data, error } = await supabase.from('categories').update(updates).eq('id', id).select().single()
+    if (error) throw error
+    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
   }
 
   async function deleteCategory(id: string) {
@@ -152,8 +166,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       monthlyIncome, monthlyExpenses, monthlyBalance,
       incomeCategories, expenseCategories, categoryById,
       expensesByCategory, recentTransactions,
-      addTransaction, deleteTransaction,
-      addCategory, deleteCategory,
+      addTransaction, updateTransaction, deleteTransaction,
+      addCategory, updateCategory, deleteCategory,
       addGoal, addToGoal, deleteGoal, reload,
     }}>
       {children}

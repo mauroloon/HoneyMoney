@@ -4,20 +4,26 @@ import { useWallet } from '../contexts/WalletContext'
 import { useFinance } from '../contexts/FinanceContext'
 import { formatCLP } from '../utils/format'
 import { sfToEmoji } from '../utils/icons'
-import { TransactionType, Category } from '../types'
+import { TransactionType, Category, Transaction } from '../types'
 
-interface Props { onClose: () => void }
+interface Props { onClose: () => void; transaction?: Transaction }
 
-export default function AddTransactionModal({ onClose }: Props) {
+export default function AddTransactionModal({ onClose, transaction }: Props) {
   const { user } = useAuth()
   const { active: wallet } = useWallet()
-  const { incomeCategories, expenseCategories, addTransaction } = useFinance()
+  const { incomeCategories, expenseCategories, addTransaction, updateTransaction, categoryById } = useFinance()
 
-  const [type, setType]         = useState<TransactionType>('expense')
-  const [amount, setAmount]     = useState('')
-  const [category, setCategory] = useState<Category | null>(null)
-  const [date, setDate]         = useState(new Date().toISOString().split('T')[0])
-  const [note, setNote]         = useState('')
+  const isEditing = !!transaction
+
+  const [type, setType]         = useState<TransactionType>(transaction?.type ?? 'expense')
+  const [amount, setAmount]     = useState(transaction ? String(transaction.amount) : '')
+  const [category, setCategory] = useState<Category | null>(
+    transaction ? (categoryById(transaction.category_id) ?? null) : null
+  )
+  const [date, setDate]         = useState(
+    transaction ? transaction.date.split('T')[0] : new Date().toISOString().split('T')[0]
+  )
+  const [note, setNote]         = useState(transaction?.note ?? '')
   const [saving, setSaving]     = useState(false)
 
   const categories = type === 'income' ? incomeCategories : expenseCategories
@@ -27,7 +33,7 @@ export default function AddTransactionModal({ onClose }: Props) {
   async function handleSave() {
     if (!isValid || !wallet || !user) return
     setSaving(true)
-    await addTransaction({
+    const payload = {
       wallet_id: wallet.id,
       user_id: user.id,
       amount: numAmount,
@@ -35,7 +41,12 @@ export default function AddTransactionModal({ onClose }: Props) {
       category_id: category!.id,
       date: new Date(date + 'T12:00:00').toISOString(),
       note,
-    })
+    }
+    if (isEditing) {
+      await updateTransaction(transaction!.id, payload)
+    } else {
+      await addTransaction(payload)
+    }
     setSaving(false)
     onClose()
   }
@@ -46,7 +57,7 @@ export default function AddTransactionModal({ onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 bg-white rounded-t-3xl border-b border-gray-100 flex-shrink-0">
           <button onClick={onClose} className="text-gray-500 text-sm">Cancelar</button>
-          <span className="font-semibold text-gray-900">Nueva transacción</span>
+          <span className="font-semibold text-gray-900">{isEditing ? 'Editar movimiento' : 'Nueva transacción'}</span>
           <button onClick={handleSave} disabled={!isValid || saving}
             className={`text-sm font-bold ${isValid ? 'text-primary' : 'text-gray-300'}`}>
             {saving ? '...' : 'Guardar'}

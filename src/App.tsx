@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage'
 import TransactionsPage from './pages/TransactionsPage'
 import SavingsPage from './pages/SavingsPage'
 import WalletPage from './pages/WalletPage'
+import CategoriesPage from './pages/CategoriesPage'
 
 export default function App() {
   return (
@@ -54,6 +55,7 @@ function InnerApp() {
         <Route path="/transactions" element={<Layout title="Movimientos">    <TransactionsPage /> </Layout>} />
         <Route path="/savings"      element={<Layout title="Metas de ahorro"><SavingsPage />      </Layout>} />
         <Route path="/wallet"       element={<Layout title="Mi billetera">   <WalletPage />       </Layout>} />
+        <Route path="/categories"   element={<Layout title="Categorías">     <CategoriesPage />   </Layout>} />
       </Routes>
     </FinanceProvider>
   )

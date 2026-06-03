@@ -1,18 +1,21 @@
 import { useState, useMemo } from 'react'
-import { Trash2, Search, Plus } from 'lucide-react'
+import { Trash2, Search, Plus, Pencil, ArrowUpDown } from 'lucide-react'
 import { useFinance } from '../contexts/FinanceContext'
 import { formatCLP, formatCLPNumber, formatDate, formatMonthYear } from '../utils/format'
 import { sfToEmoji } from '../utils/icons'
-import { TransactionType } from '../types'
+import { TransactionType, Transaction } from '../types'
 import AddTransactionModal from '../components/AddTransactionModal'
 
 type Filter = TransactionType | 'all'
+type SortOrder = 'desc' | 'asc'
 
 export default function TransactionsPage() {
   const { transactions, categoryById, deleteTransaction } = useFinance()
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [showAdd, setShowAdd] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -26,7 +29,11 @@ export default function TransactionsPage() {
           t.note.toLowerCase().includes(search.toLowerCase())
         )
       })
-  }, [transactions, filter, search, categoryById])
+      .sort((a, b) => sortOrder === 'desc'
+        ? b.date.localeCompare(a.date)
+        : a.date.localeCompare(b.date)
+      )
+  }, [transactions, filter, search, sortOrder, categoryById])
 
   // Group by month
   const grouped = useMemo(() => {
@@ -68,8 +75,8 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Filter chips */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
+        {/* Filter chips + sort */}
+        <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar items-center">
           {chips.map(c => (
             <button
               key={c.value}
@@ -83,6 +90,15 @@ export default function TransactionsPage() {
               {c.label}
             </button>
           ))}
+          <button
+            onClick={() => setSortOrder(o => o === 'desc' ? 'asc' : 'desc')}
+            className="flex-shrink-0 ml-auto flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
+            style={{ backgroundColor: '#E5E5EA', color: '#3C3C43' }}
+            title={sortOrder === 'desc' ? 'Más reciente primero' : 'Más antiguo primero'}
+          >
+            <ArrowUpDown size={13} />
+            <span className="text-xs">{sortOrder === 'desc' ? 'Reciente' : 'Antiguo'}</span>
+          </button>
         </div>
 
         {/* List */}
@@ -130,6 +146,12 @@ export default function TransactionsPage() {
                               {t.type === 'income' ? '+' : '-'}{formatCLP(t.amount)}
                             </span>
                             <button
+                              onClick={() => setEditingTransaction(t)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 flex-shrink-0"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
                               onClick={() => setConfirmDelete(t.id)}
                               className="w-7 h-7 flex items-center justify-center rounded-full bg-red-50 text-expense flex-shrink-0"
                             >
@@ -157,6 +179,9 @@ export default function TransactionsPage() {
       </button>
 
       {showAdd && <AddTransactionModal onClose={() => setShowAdd(false)} />}
+      {editingTransaction && (
+        <AddTransactionModal transaction={editingTransaction} onClose={() => setEditingTransaction(null)} />
+      )}
 
       {/* Delete confirm dialog */}
       {confirmDelete && (
