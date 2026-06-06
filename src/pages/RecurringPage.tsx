@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, Pencil, Trash2, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useFinance } from '../contexts/FinanceContext'
 import { formatCLP, formatMonthYear } from '../utils/format'
@@ -268,12 +268,39 @@ function RecurringModal({ payment, onClose, onSave }: {
   onClose: () => void
   onSave: (data: ModalData) => Promise<void>
 }) {
+  const { transactions, categoryById, recurringPayments } = useFinance()
+
   const [name, setName]   = useState(payment?.name ?? '')
   const [amount, setAmount] = useState(payment ? String(payment.amount) : '')
   const [day, setDay]     = useState(payment?.day_of_month ?? 1)
   const [icon, setIcon]   = useState(payment?.icon ?? '💳')
   const [color, setColor] = useState(payment?.color_hex ?? '#FF3B30')
   const [saving, setSaving] = useState(false)
+
+  const suggestions = useMemo(() => {
+    if (payment) return []
+    const existingNames = new Set(recurringPayments.map(r => r.name.trim().toLowerCase()))
+    const seen = new Map<string, { transaction: typeof transactions[0]; count: number }>()
+    for (const t of transactions) {
+      if (t.type !== 'expense' || !t.note.trim()) continue
+      const key = t.note.trim().toLowerCase()
+      if (existingNames.has(key)) continue
+      const entry = seen.get(key)
+      if (entry) entry.count++
+      else seen.set(key, { transaction: t, count: 1 })
+    }
+    return Array.from(seen.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 12)
+      .map(e => e.transaction)
+  }, [transactions, recurringPayments, payment])
+
+  function applySuggestion(t: typeof transactions[0]) {
+    const cat = categoryById(t.category_id)
+    setName(t.note.trim())
+    setAmount(String(t.amount))
+    if (cat) { setIcon(cat.icon); setColor(cat.color_hex) }
+  }
 
   const isValid = name.trim().length > 0 && parseFloat(amount) > 0 && day >= 1 && day <= 31
 
@@ -310,6 +337,41 @@ function RecurringModal({ payment, onClose, onSave }: {
         </div>
 
         <div className="p-4 space-y-3">
+
+          {/* Sugerencias desde transacciones existentes */}
+          {suggestions.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 shadow-card">
+              <p className="text-xs text-gray-400 mb-3">Desde mis gastos</p>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {suggestions.map(t => {
+                  const cat = categoryById(t.category_id)
+                  const isSelected = name === t.note.trim() && amount === String(t.amount)
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => applySuggestion(t)}
+                      className="flex-shrink-0 flex flex-col items-center gap-1.5 p-2.5 rounded-2xl w-[72px] transition-all"
+                      style={isSelected
+                        ? { outline: `2px solid ${cat?.color_hex ?? color}`, outlineOffset: '2px', backgroundColor: (cat?.color_hex ?? color) + '15' }
+                        : { backgroundColor: '#F9FAFB' }
+                      }
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
+                        style={{ backgroundColor: (cat?.color_hex ?? '#ccc') + '22' }}
+                      >
+                        {cat?.icon ?? '💳'}
+                      </div>
+                      <p className="text-[10px] text-gray-700 font-medium text-center leading-tight w-full truncate">
+                        {t.note.trim()}
+                      </p>
+                      <p className="text-[10px] text-gray-400">{formatCLP(t.amount)}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Preview del ícono seleccionado */}
           <div className="flex items-center justify-center py-2">
