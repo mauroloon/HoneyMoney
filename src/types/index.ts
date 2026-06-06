@@ -91,3 +91,31 @@ export interface SavingsGoalInsert {
   icon: string
   color_hex: string
 }
+
+export interface RecurringPayment {
+  id: string
+  wallet_id: string
+  name: string
+  amount: number
+  day_of_month: number
+  icon: string
+  color_hex: string
+  is_active: boolean
+  created_at?: string
+}
+
+export interface RecurringPaymentLog {
+  id: string
+  recurring_payment_id: string
+  paid_month: string
+  paid_at: string
+}
+
+export interface RecurringPaymentInsert {
+  wallet_id: string
+  name: string
+  amount: number
+  day_of_month: number
+  icon: string
+  color_hex: string
+}
