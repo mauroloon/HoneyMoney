@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Category, Transaction, SavingsGoal, TransactionInsert, CategoryInsert, SavingsGoalInsert } from '../types'
+import { Category, Transaction, SavingsGoal, TransactionInsert, CategoryInsert, SavingsGoalInsert, RecurringPayment, RecurringPaymentLog, RecurringPaymentInsert } from '../types'
 import { useAuth } from './AuthContext'
 import { useWallet } from './WalletContext'
 import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '../utils/icons'
@@ -10,6 +10,8 @@ interface FinanceState {
   transactions: Transaction[]
   categories: Category[]
   savingsGoals: SavingsGoal[]
+  recurringPayments: RecurringPayment[]
+  recurringLogs: RecurringPaymentLog[]
   loading: boolean
   selectedMonth: Date
   setSelectedMonth: (d: Date) => void
@@ -34,6 +36,10 @@ interface FinanceState {
   addGoal: (g: Omit<SavingsGoalInsert, 'wallet_id'>) => Promise<void>
   addToGoal: (id: string, amount: number) => Promise<void>
   deleteGoal: (id: string) => Promise<void>
+  addRecurring: (r: Omit<RecurringPaymentInsert, 'wallet_id'>) => Promise<void>
+  updateRecurring: (id: string, updates: Partial<Omit<RecurringPaymentInsert, 'wallet_id'>>) => Promise<void>
+  deleteRecurring: (id: string) => Promise<void>
+  toggleRecurringPaid: (id: string, month: string) => Promise<void>
   reload: () => Promise<void>
 }
 
@@ -43,30 +49,44 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const { active: wallet } = useWallet()
 
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [categories, setCategories]     = useState<Category[]>([])
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([])
-  const [loading, setLoading]           = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState(new Date())
+  const [transactions, setTransactions]       = useState<Transaction[]>([])
+  const [categories, setCategories]           = useState<Category[]>([])
+  const [savingsGoals, setSavingsGoals]       = useState<SavingsGoal[]>([])
+  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([])
+  const [recurringLogs, setRecurringLogs]     = useState<RecurringPaymentLog[]>([])
+  const [loading, setLoading]                 = useState(false)
+  const [selectedMonth, setSelectedMonth]     = useState(new Date())
 
   const reload = useCallback(async () => {
     if (!wallet) return
     setLoading(true)
-    const [t, c, g] = await Promise.all([
+    const [t, c, g, r] = await Promise.all([
       supabase.from('transactions').select('*').eq('wallet_id', wallet.id).order('date', { ascending: false }),
       supabase.from('categories').select('*').eq('wallet_id', wallet.id),
       supabase.from('savings_goals').select('*').eq('wallet_id', wallet.id),
+      supabase.from('recurring_payments').select('*').eq('wallet_id', wallet.id).eq('is_active', true).order('day_of_month'),
     ])
     if (c.data?.length === 0) await insertDefaultCategories(wallet.id)
     else setCategories(c.data ?? [])
     setTransactions(t.data ?? [])
     setSavingsGoals(g.data ?? [])
+    const payments = r.data ?? []
+    setRecurringPayments(payments)
+    if (payments.length > 0) {
+      const { data: logs } = await supabase
+        .from('recurring_payment_logs')
+        .select('*')
+        .in('recurring_payment_id', payments.map(p => p.id))
+      setRecurringLogs(logs ?? [])
+    } else {
+      setRecurringLogs([])
+    }
     setLoading(false)
   }, [wallet])
 
   useEffect(() => {
     if (wallet) reload()
-    else { setTransactions([]); setCategories([]); setSavingsGoals([]) }
+    else { setTransactions([]); setCategories([]); setSavingsGoals([]); setRecurringPayments([]); setRecurringLogs([]) }
   }, [wallet, reload])
 
   // ── Realtime ──────────────────────────────────────────
@@ -75,6 +95,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const channel = supabase.realtime.channel(`wallet-${wallet.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `wallet_id=eq.${wallet.id}` }, () => reload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'savings_goals', filter: `wallet_id=eq.${wallet.id}` }, () => reload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recurring_payments', filter: `wallet_id=eq.${wallet.id}` }, () => reload())
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [wallet, reload])
@@ -159,16 +180,47 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setSavingsGoals(prev => prev.filter(g => g.id !== id))
   }
 
+  async function addRecurring(r: Omit<RecurringPaymentInsert, 'wallet_id'>) {
+    if (!wallet) return
+    const { data } = await supabase.from('recurring_payments').insert({ ...r, wallet_id: wallet.id }).select().single()
+    if (data) setRecurringPayments(prev => [...prev, data].sort((a, b) => a.day_of_month - b.day_of_month))
+  }
+
+  async function updateRecurring(id: string, updates: Partial<Omit<RecurringPaymentInsert, 'wallet_id'>>) {
+    const { data, error } = await supabase.from('recurring_payments').update(updates).eq('id', id).select().single()
+    if (error) throw error
+    setRecurringPayments(prev => prev.map(r => r.id === id ? { ...r, ...data } : r).sort((a, b) => a.day_of_month - b.day_of_month))
+  }
+
+  async function deleteRecurring(id: string) {
+    await supabase.from('recurring_payments').update({ is_active: false }).eq('id', id)
+    setRecurringPayments(prev => prev.filter(r => r.id !== id))
+    setRecurringLogs(prev => prev.filter(l => l.recurring_payment_id !== id))
+  }
+
+  async function toggleRecurringPaid(id: string, month: string) {
+    const existing = recurringLogs.find(l => l.recurring_payment_id === id && l.paid_month === month)
+    if (existing) {
+      await supabase.from('recurring_payment_logs').delete().eq('id', existing.id)
+      setRecurringLogs(prev => prev.filter(l => l.id !== existing.id))
+    } else {
+      const { data } = await supabase.from('recurring_payment_logs').insert({ recurring_payment_id: id, paid_month: month }).select().single()
+      if (data) setRecurringLogs(prev => [...prev, data])
+    }
+  }
+
   return (
     <FinanceContext.Provider value={{
-      transactions, categories, savingsGoals, loading,
+      transactions, categories, savingsGoals, recurringPayments, recurringLogs, loading,
       selectedMonth, setSelectedMonth,
       monthlyIncome, monthlyExpenses, monthlyBalance,
       incomeCategories, expenseCategories, categoryById,
       expensesByCategory, recentTransactions,
       addTransaction, updateTransaction, deleteTransaction,
       addCategory, updateCategory, deleteCategory,
-      addGoal, addToGoal, deleteGoal, reload,
+      addGoal, addToGoal, deleteGoal,
+      addRecurring, updateRecurring, deleteRecurring, toggleRecurringPaid,
+      reload,
     }}>
       {children}
     </FinanceContext.Provider>

@@ -9,10 +9,11 @@ interface TabItem {
 }
 
 const TABS: TabItem[] = [
-  { path: '/',             icon: '🏠', label: 'Inicio'    },
+  { path: '/',             icon: '🏠', label: 'Inicio'      },
   { path: '/transactions', icon: '📋', label: 'Movimientos' },
-  { path: '/savings',      icon: '🎯', label: 'Metas'     },
-  { path: '/wallet',       icon: '💼', label: 'Billetera' },
+  { path: '/recurring',    icon: '🔄', label: 'Pagos'       },
+  { path: '/savings',      icon: '🎯', label: 'Metas'       },
+  { path: '/wallet',       icon: '💼', label: 'Billetera'   },
 ]
 
 interface Props {
@@ -58,7 +59,7 @@ export default function Layout({ children, title }: Props) {
                 <span className={`text-xl transition-all ${isActive ? 'scale-110' : 'opacity-50'}`}>
                   {tab.icon}
                 </span>
-                <span className={`text-[10px] font-medium transition-all ${isActive ? 'text-primary' : 'text-gray-400'}`}>
+                <span className={`text-[9px] font-medium transition-all ${isActive ? 'text-primary' : 'text-gray-400'}`}>
                   {tab.label}
                 </span>
                 {isActive && <div className="w-1 h-1 rounded-full bg-primary" />}
