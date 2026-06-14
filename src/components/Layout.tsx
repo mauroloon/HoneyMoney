@@ -1,19 +1,20 @@
 import { ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { Home, List, RefreshCw, Target, Wallet, LucideIcon } from 'lucide-react'
 import { useWallet } from '../contexts/WalletContext'
 
 interface TabItem {
   path: string
-  icon: string
+  Icon: LucideIcon
   label: string
 }
 
 const TABS: TabItem[] = [
-  { path: '/',             icon: '🏠', label: 'Inicio'      },
-  { path: '/transactions', icon: '📋', label: 'Movimientos' },
-  { path: '/recurring',    icon: '🔄', label: 'Pagos'       },
-  { path: '/savings',      icon: '🎯', label: 'Metas'       },
-  { path: '/wallet',       icon: '💼', label: 'Billetera'   },
+  { path: '/',             Icon: Home,       label: 'Inicio'      },
+  { path: '/transactions', Icon: List,       label: 'Movimientos' },
+  { path: '/recurring',    Icon: RefreshCw,  label: 'Pagos'       },
+  { path: '/savings',      Icon: Target,     label: 'Metas'       },
+  { path: '/wallet',       Icon: Wallet,     label: 'Billetera'   },
 ]
 
 interface Props {
@@ -32,7 +33,7 @@ export default function Layout({ children, title }: Props) {
         <h1 className="font-bold text-gray-900 text-lg">{title}</h1>
         {active && (
           <div className="flex items-center gap-1.5 bg-primary/10 rounded-full px-3 py-1">
-            <span className="text-xs">💼</span>
+            <Wallet size={11} className="text-primary" />
             <span className="text-xs font-semibold text-primary truncate max-w-[100px]">{active.name}</span>
           </div>
         )}
@@ -46,23 +47,25 @@ export default function Layout({ children, title }: Props) {
       {/* Bottom nav */}
       <nav className="bg-white border-t border-gray-100 flex-shrink-0 pb-safe">
         <div className="flex">
-          {TABS.map(tab => {
-            const isActive = tab.path === '/'
+          {TABS.map(({ path, Icon, label }) => {
+            const isActive = path === '/'
               ? location.pathname === '/'
-              : location.pathname.startsWith(tab.path)
+              : location.pathname.startsWith(path)
             return (
               <NavLink
-                key={tab.path}
-                to={tab.path}
-                className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all"
+                key={path}
+                to={path}
+                className="flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-1.5 nav-tab"
               >
-                <span className={`text-xl transition-all ${isActive ? 'scale-110' : 'opacity-50'}`}>
-                  {tab.icon}
+                <Icon
+                  size={22}
+                  strokeWidth={isActive ? 2.5 : 1.8}
+                  className={`transition-all duration-150 ${isActive ? 'text-primary' : 'text-gray-400'}`}
+                />
+                <span className={`text-[9px] font-semibold tracking-wide transition-colors duration-150 ${isActive ? 'text-primary' : 'text-gray-400'}`}>
+                  {label}
                 </span>
-                <span className={`text-[9px] font-medium transition-all ${isActive ? 'text-primary' : 'text-gray-400'}`}>
-                  {tab.label}
-                </span>
-                {isActive && <div className="w-1 h-1 rounded-full bg-primary" />}
+                <div className={`h-0.5 w-4 rounded-full mt-0.5 transition-all duration-200 ${isActive ? 'bg-primary opacity-100' : 'opacity-0'}`} />
               </NavLink>
             )
           })}
