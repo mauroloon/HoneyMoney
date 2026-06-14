@@ -67,18 +67,19 @@ export default function AddTransactionModal({ onClose, transaction }: Props) {
         <div className="flex-1 overflow-y-auto no-scrollbar">
           {/* Type toggle */}
           <div className="px-4 pt-4">
-            <div className="flex bg-gray-200 rounded-2xl p-1">
+            <div className="flex bg-gray-200/70 rounded-2xl p-1 gap-1">
               {(['expense', 'income'] as TransactionType[]).map(t => (
                 <button
                   key={t}
                   onClick={() => { setType(t); setCategory(null) }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 active:scale-95"
                   style={type === t ? {
                     backgroundColor: t === 'income' ? '#34C759' : '#FF3B30',
                     color: 'white',
-                  } : { color: '#8E8E93' }}
+                    boxShadow: `0 2px 8px ${t === 'income' ? '#34C75940' : '#FF3B3040'}`,
+                  } : { color: '#8E8E93', backgroundColor: 'transparent' }}
                 >
-                  {t === 'income' ? '↓ Ingreso' : '↑ Gasto'}
+                  {t === 'income' ? 'Ingreso' : 'Gasto'}
                 </button>
               ))}
             </div>
@@ -87,9 +88,9 @@ export default function AddTransactionModal({ onClose, transaction }: Props) {
           {/* Amount */}
           <div className="px-4 pt-4 pb-2">
             <div className="bg-white rounded-3xl p-4 shadow-card">
-              <p className="text-xs text-gray-400 mb-2">Monto</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Monto</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl text-gray-400 font-semibold">$</span>
+                <span className="text-2xl font-semibold" style={{ color: type === 'income' ? '#34C759' : '#FF3B30' }}>$</span>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -101,16 +102,16 @@ export default function AddTransactionModal({ onClose, transaction }: Props) {
                 />
               </div>
               {numAmount > 0 && (
-                <p className="text-xs text-gray-400 mt-1">{formatCLP(numAmount)}</p>
+                <p className="text-xs text-gray-500 font-medium mt-1">{formatCLP(numAmount)}</p>
               )}
-              <div className="h-0.5 mt-2 rounded-full" style={{ backgroundColor: type === 'income' ? '#34C759' : '#FF3B30' }} />
+              <div className="h-0.5 mt-2 rounded-full transition-colors duration-200" style={{ backgroundColor: type === 'income' ? '#34C759' : '#FF3B30' }} />
             </div>
           </div>
 
           {/* Category */}
           <div className="px-4 pb-3">
             <div className="bg-white rounded-3xl p-4 shadow-card">
-              <p className="text-xs text-gray-400 mb-3">🏷️ Categoría</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Categoría</p>
               <div className="grid grid-cols-4 gap-2">
                 {categories.map(cat => {
                   const sel = category?.id === cat.id
@@ -118,19 +119,24 @@ export default function AddTransactionModal({ onClose, transaction }: Props) {
                     <button
                       key={cat.id}
                       onClick={() => setCategory(cat)}
-                      className="flex flex-col items-center gap-1 relative"
+                      className="flex flex-col items-center gap-1 relative active:scale-90 transition-transform duration-100"
                     >
                       <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all"
-                        style={{ backgroundColor: sel ? cat.color_hex : cat.color_hex + '22' }}
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition-all duration-150"
+                        style={{
+                          backgroundColor: sel ? cat.color_hex : cat.color_hex + '18',
+                          boxShadow: sel ? `0 2px 8px ${cat.color_hex}50` : 'none',
+                          transform: sel ? 'scale(1.05)' : 'scale(1)',
+                        }}
                       >
                         <span>{sfToEmoji(cat.icon)}</span>
                       </div>
                       {sel && (
-                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold"
-                          style={{ backgroundColor: cat.color_hex, fontSize: 9 }}>✓</span>
+                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white flex items-center justify-center font-black"
+                          style={{ backgroundColor: cat.color_hex, fontSize: 8 }}>✓</span>
                       )}
-                      <span className="text-xs text-gray-500 line-clamp-1 text-center w-full" style={{ fontSize: 10 }}>
+                      <span className={`line-clamp-1 text-center w-full transition-colors duration-150 ${sel ? 'font-semibold' : 'text-gray-500'}`}
+                        style={{ fontSize: 10, color: sel ? cat.color_hex : undefined }}>
                         {cat.name}
                       </span>
                     </button>
@@ -143,17 +149,15 @@ export default function AddTransactionModal({ onClose, transaction }: Props) {
           {/* Details */}
           <div className="px-4 pb-6">
             <div className="bg-white rounded-3xl shadow-card overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-sm">📅</span>
-                <span className="text-sm text-gray-700 flex-shrink-0">Fecha</span>
+              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
+                <span className="text-[13px] font-medium text-gray-500 flex-shrink-0">Fecha</span>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                  className="flex-1 text-sm text-primary text-right bg-transparent" />
+                  className="flex-1 text-sm font-semibold text-primary text-right bg-transparent" />
               </div>
-              <div className="flex items-start gap-3 px-4 py-3">
-                <span className="text-sm mt-0.5">📝</span>
-                <span className="text-sm text-gray-700 flex-shrink-0 mt-0.5">Nota</span>
+              <div className="flex items-start gap-3 px-4 py-3.5">
+                <span className="text-[13px] font-medium text-gray-500 flex-shrink-0 mt-0.5">Nota</span>
                 <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Opcional"
-                  rows={1} className="flex-1 text-sm text-gray-900 placeholder-gray-400 text-right bg-transparent resize-none" />
+                  rows={1} className="flex-1 text-sm text-gray-900 placeholder-gray-400 text-right bg-transparent resize-none font-medium" />
               </div>
             </div>
           </div>

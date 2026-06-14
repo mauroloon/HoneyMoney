@@ -23,3 +23,9 @@ tsconfig.*.tsbuildinfo
 # Editor
 .vscode/
 .idea/
+.agents/
+.claude/
+.github/skills/
+.github/skills/impeccable/SKILL.md
+PRODUCT.md
+skills-lock.json
