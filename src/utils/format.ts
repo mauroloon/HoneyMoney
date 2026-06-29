@@ -14,9 +14,21 @@ export function formatCLPNumber(amount: number): string {
   }).format(amount)
 }
 
+// Parsea "YYYY-MM-DD" (o ISO completo) como fecha LOCAL para evitar el
+// desplazamiento UTC: new Date("2026-07-01") == 30 jun 20:00 en UTC-4.
+export function parseLocalDate(isoDate: string): Date {
+  const [y, m, d] = isoDate.split('T')[0].split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+// Devuelve la fecha de hoy (u otra Date) como "YYYY-MM-DD" en hora local.
+export function localDateStr(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 // Fecha en español: "15 de mayo"
 export function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString('es-CL', {
+  return parseLocalDate(isoDate).toLocaleDateString('es-CL', {
     day: 'numeric',
     month: 'long',
   })
@@ -34,7 +46,7 @@ export function formatMonthYear(date: Date): string {
 export function groupByMonth(items: { date: string }[]): Record<string, typeof items> {
   const groups: Record<string, typeof items> = {}
   for (const item of items) {
-    const key = formatMonthYear(new Date(item.date))
+    const key = formatMonthYear(parseLocalDate(item.date))
     if (!groups[key]) groups[key] = []
     groups[key].push(item)
   }
@@ -42,7 +54,7 @@ export function groupByMonth(items: { date: string }[]): Record<string, typeof i
 }
 
 export function isSameMonth(isoDate: string, ref: Date): boolean {
-  const d = new Date(isoDate)
+  const d = parseLocalDate(isoDate)
   return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth()
 }
 
