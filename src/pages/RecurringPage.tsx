@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Plus, Pencil, Trash2, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, ChevronLeft, ChevronRight, ReceiptText } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useWallet } from '../contexts/WalletContext'
 import { useFinance } from '../contexts/FinanceContext'
 import { formatCLP, formatMonthYear } from '../utils/format'
-import { PRESET_COLORS } from '../utils/icons'
-import { RecurringPayment } from '../types'
+import { sfToEmoji, PRESET_COLORS } from '../utils/icons'
+import { RecurringPayment, Category } from '../types'
 
 const RECURRING_ICONS = [
   '💳','🏠','🚗','📺','🎵','🌐','📱','💡','💧','🏋️',
@@ -22,12 +24,11 @@ export default function RecurringPage() {
     selectedMonth, setSelectedMonth,
   } = useFinance()
 
-  const [showAdd, setShowAdd]         = useState(false)
-  const [editPayment, setEditPayment] = useState<RecurringPayment | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [showAdd, setShowAdd]               = useState(false)
+  const [editPayment, setEditPayment]       = useState<RecurringPayment | null>(null)
+  const [confirmDelete, setConfirmDelete]   = useState<string | null>(null)
+  const [registerPayment, setRegisterPayment] = useState<RecurringPayment | null>(null)
 
-  const now = new Date()
-  const isCurrentMonth = selectedMonth.getFullYear() === now.getFullYear() && selectedMonth.getMonth() === now.getMonth()
   const monthKey = paidMonthKey(selectedMonth)
 
   const paidIds = new Set(
@@ -45,7 +46,7 @@ export default function RecurringPage() {
     setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1))
   }
   function nextMonth() {
-    if (!isCurrentMonth) setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))
+    setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))
   }
 
   return (
@@ -66,8 +67,7 @@ export default function RecurringPage() {
             </span>
             <button
               onClick={nextMonth}
-              disabled={isCurrentMonth}
-              className={`w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-card transition-opacity ${isCurrentMonth ? 'opacity-25' : ''}`}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-card"
             >
               <ChevronRight size={16} className="text-gray-600" />
             </button>
@@ -180,18 +180,33 @@ export default function RecurringPage() {
                       </div>
                     </div>
 
-                    {/* Paid toggle pill */}
-                    <button
-                      onClick={() => toggleRecurringPaid(payment.id, monthKey)}
-                      className={`mt-3 w-full py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 ${
-                        isPaid
-                          ? 'text-white'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      style={isPaid ? { backgroundColor: payment.color_hex } : {}}
-                    >
-                      {isPaid ? '✓ Pagado este mes' : 'Marcar como pagado'}
-                    </button>
+                    {/* Action row */}
+                    {isPaid ? (
+                      <button
+                        onClick={() => toggleRecurringPaid(payment.id, monthKey)}
+                        className="mt-3 w-full py-2.5 rounded-2xl text-xs font-semibold text-white transition-all duration-200"
+                        style={{ backgroundColor: payment.color_hex }}
+                      >
+                        ✓ Pagado este mes
+                      </button>
+                    ) : (
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => toggleRecurringPaid(payment.id, monthKey)}
+                          className="flex-1 py-2.5 rounded-2xl text-xs font-semibold bg-gray-100 text-gray-600 transition-all"
+                        >
+                          Marcar pagado
+                        </button>
+                        <button
+                          onClick={() => setRegisterPayment(payment)}
+                          className="flex-1 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                          style={{ backgroundColor: payment.color_hex + '18', color: payment.color_hex }}
+                        >
+                          <ReceiptText size={12} />
+                          Registrar gasto
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -227,6 +242,16 @@ export default function RecurringPage() {
         />
       )}
 
+      {/* Register & pay modal */}
+      {registerPayment && (
+        <RegisterModal
+          payment={registerPayment}
+          selectedMonth={selectedMonth}
+          monthKey={monthKey}
+          onClose={() => setRegisterPayment(null)}
+        />
+      )}
+
       {/* Delete confirm */}
       {confirmDelete && (
         <div className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center p-4">
@@ -251,6 +276,133 @@ export default function RecurringPage() {
         </div>
       )}
     </>
+  )
+}
+
+// ── Modal registrar gasto + marcar pagado ────────────────
+
+function RegisterModal({ payment, selectedMonth, monthKey, onClose }: {
+  payment: RecurringPayment
+  selectedMonth: Date
+  monthKey: string
+  onClose: () => void
+}) {
+  const { user }          = useAuth()
+  const { active: wallet } = useWallet()
+  const { expenseCategories, addTransaction, toggleRecurringPaid } = useFinance()
+
+  // Pre-select best matching category by color, then icon, then first available
+  const best = expenseCategories.find(c => c.color_hex === payment.color_hex)
+    ?? expenseCategories.find(c => c.icon === payment.icon)
+    ?? expenseCategories[0]
+
+  const [selectedCat, setSelectedCat] = useState<Category | null>(best ?? null)
+  const [saving, setSaving] = useState(false)
+
+  // Use payment's day_of_month clamped to month length
+  const lastDay = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate()
+  const txDate  = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), Math.min(payment.day_of_month, lastDay))
+  const dateStr = txDate.toISOString().split('T')[0]
+
+  async function handleConfirm() {
+    if (!selectedCat || !user || !wallet) return
+    setSaving(true)
+    await addTransaction({
+      wallet_id:   wallet.id,
+      user_id:     user.id,
+      amount:      payment.amount,
+      type:        'expense',
+      category_id: selectedCat.id,
+      date:        dateStr,
+      note:        payment.name,
+    })
+    await toggleRecurringPaid(payment.id, monthKey)
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 modal-backdrop z-50 flex items-end justify-center">
+      <div className="bg-bg-base rounded-t-3xl w-full max-w-sm max-h-[80vh] overflow-y-auto no-scrollbar shadow-2xl">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 bg-white rounded-t-3xl border-b border-gray-100">
+          <button onClick={onClose} className="text-gray-500 text-sm">Cancelar</button>
+          <span className="font-semibold text-gray-900 text-sm">Registrar gasto</span>
+          <button
+            onClick={handleConfirm}
+            disabled={!selectedCat || saving}
+            className={`text-sm font-bold ${selectedCat && !saving ? 'text-primary' : 'text-gray-300'}`}
+          >
+            {saving ? '...' : 'Registrar'}
+          </button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          {/* Payment info */}
+          <div className="bg-white rounded-2xl p-4 shadow-card flex items-center gap-3">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ backgroundColor: payment.color_hex + '22' }}
+            >
+              {payment.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm truncate">{payment.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {formatCLP(payment.amount)} · {dateStr}
+              </p>
+            </div>
+          </div>
+
+          {/* Category picker */}
+          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+            <p className="text-[11px] text-gray-400 px-4 pt-3 pb-2 font-medium uppercase tracking-wider">
+              Categoría del gasto
+            </p>
+            <div className="overflow-x-auto no-scrollbar">
+              <div className="flex gap-2 px-4 pb-3" style={{ width: 'max-content' }}>
+                {expenseCategories.map(cat => {
+                  const isSelected = selectedCat?.id === cat.id
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCat(cat)}
+                      className="flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-2xl transition-all"
+                      style={
+                        isSelected
+                          ? { backgroundColor: cat.color_hex + '20', boxShadow: `0 0 0 1.5px ${cat.color_hex}` }
+                          : { backgroundColor: '#F2F2F7' }
+                      }
+                    >
+                      <span className="text-xl">{sfToEmoji(cat.icon)}</span>
+                      <span className="text-[10px] font-semibold text-gray-700 whitespace-nowrap max-w-[60px] truncate">
+                        {cat.name}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Confirm summary */}
+          {selectedCat && (
+            <div
+              className="rounded-2xl px-4 py-3.5 flex items-center justify-between"
+              style={{ backgroundColor: payment.color_hex + '12' }}
+            >
+              <span className="text-xs text-gray-600">
+                Se registrará en <span className="font-semibold">{selectedCat.name}</span>
+              </span>
+              <span className="text-sm font-bold" style={{ color: payment.color_hex }}>
+                {formatCLP(payment.amount)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
