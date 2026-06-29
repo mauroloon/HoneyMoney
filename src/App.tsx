@@ -11,6 +11,7 @@ import SavingsPage from './pages/SavingsPage'
 import WalletPage from './pages/WalletPage'
 import CategoriesPage from './pages/CategoriesPage'
 import RecurringPage from './pages/RecurringPage'
+import BudgetsPage from './pages/BudgetsPage'
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ function InnerApp() {
         <Route path="/wallet"       element={<Layout title="Mi billetera">   <WalletPage />       </Layout>} />
         <Route path="/categories"   element={<Layout title="Categorías">     <CategoriesPage />   </Layout>} />
         <Route path="/recurring"    element={<Layout title="Pagos mensuales"><RecurringPage />    </Layout>} />
+        <Route path="/budgets"      element={<Layout title="Presupuesto">   <BudgetsPage />      </Layout>} />
       </Routes>
     </FinanceProvider>
   )

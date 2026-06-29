@@ -62,3 +62,7 @@ export function greeting(): string {
   if (h < 19) return 'Buenas tardes 👋'
   return 'Buenas noches 👋'
 }
+
+export function monthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}

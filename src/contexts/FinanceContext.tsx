@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Category, Transaction, SavingsGoal, TransactionInsert, CategoryInsert, SavingsGoalInsert, RecurringPayment, RecurringPaymentLog, RecurringPaymentInsert } from '../types'
+import { Budget, BudgetInsert, Category, Transaction, SavingsGoal, TransactionInsert, CategoryInsert, SavingsGoalInsert, RecurringPayment, RecurringPaymentLog, RecurringPaymentInsert } from '../types'
 import { useAuth } from './AuthContext'
 import { useWallet } from './WalletContext'
 import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '../utils/icons'
-import { isSameMonth } from '../utils/format'
+import { isSameMonth, monthKey } from '../utils/format'
 
 interface FinanceState {
   transactions: Transaction[]
@@ -25,6 +25,14 @@ interface FinanceState {
   categoryById: (id: string) => Category | undefined
   expensesByCategory: { category: Category; total: number }[]
   recentTransactions: Transaction[]
+
+  // Budgets
+  budgets: Budget[]
+  currentMonthBudgets: Budget[]
+  addBudget: (b: Omit<BudgetInsert, 'wallet_id'>) => Promise<void>
+  updateBudget: (id: string, amount: number) => Promise<void>
+  deleteBudget: (id: string) => Promise<void>
+  copyBudgetsToMonth: (fromMonth: string, toMonth: string) => Promise<void>
 
   // Actions
   addTransaction: (t: TransactionInsert) => Promise<void>
@@ -54,22 +62,25 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [savingsGoals, setSavingsGoals]       = useState<SavingsGoal[]>([])
   const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([])
   const [recurringLogs, setRecurringLogs]     = useState<RecurringPaymentLog[]>([])
+  const [budgets, setBudgets]                 = useState<Budget[]>([])
   const [loading, setLoading]                 = useState(false)
   const [selectedMonth, setSelectedMonth]     = useState(new Date())
 
   const reload = useCallback(async () => {
     if (!wallet) return
     setLoading(true)
-    const [t, c, g, r] = await Promise.all([
+    const [t, c, g, r, b] = await Promise.all([
       supabase.from('transactions').select('*').eq('wallet_id', wallet.id).order('date', { ascending: false }),
       supabase.from('categories').select('*').eq('wallet_id', wallet.id),
       supabase.from('savings_goals').select('*').eq('wallet_id', wallet.id),
       supabase.from('recurring_payments').select('*').eq('wallet_id', wallet.id).eq('is_active', true).order('day_of_month'),
+      supabase.from('budgets').select('*').eq('wallet_id', wallet.id),
     ])
     if (c.data?.length === 0) await insertDefaultCategories(wallet.id)
     else setCategories(c.data ?? [])
     setTransactions(t.data ?? [])
     setSavingsGoals(g.data ?? [])
+    setBudgets(b.data ?? [])
     const payments = r.data ?? []
     setRecurringPayments(payments)
     if (payments.length > 0) {
@@ -86,7 +97,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (wallet) reload()
-    else { setTransactions([]); setCategories([]); setSavingsGoals([]); setRecurringPayments([]); setRecurringLogs([]) }
+    else { setTransactions([]); setCategories([]); setSavingsGoals([]); setRecurringPayments([]); setRecurringLogs([]); setBudgets([]) }
   }, [wallet, reload])
 
   // ── Realtime ──────────────────────────────────────────
@@ -96,6 +107,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `wallet_id=eq.${wallet.id}` }, () => reload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'savings_goals', filter: `wallet_id=eq.${wallet.id}` }, () => reload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recurring_payments', filter: `wallet_id=eq.${wallet.id}` }, () => reload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets', filter: `wallet_id=eq.${wallet.id}` }, () => reload())
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [wallet, reload])
@@ -126,6 +138,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   })()
 
   const recentTransactions = transactions.slice(0, 5)
+
+  const currentMonthBudgets = budgets.filter(b => b.month === monthKey(selectedMonth))
 
   // ── Actions ───────────────────────────────────────────
   async function addTransaction(t: TransactionInsert) {
@@ -180,6 +194,48 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setSavingsGoals(prev => prev.filter(g => g.id !== id))
   }
 
+  async function addBudget(b: Omit<BudgetInsert, 'wallet_id'>) {
+    if (!wallet) return
+    const { data } = await supabase
+      .from('budgets')
+      .upsert({ ...b, wallet_id: wallet.id }, { onConflict: 'wallet_id,category_id,month' })
+      .select()
+      .single()
+    if (data) setBudgets(prev => [...prev.filter(x => !(x.category_id === b.category_id && x.month === b.month)), data])
+  }
+
+  async function updateBudget(id: string, amount: number) {
+    const { data, error } = await supabase.from('budgets').update({ amount }).eq('id', id).select().single()
+    if (error) throw error
+    setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...data } : b))
+  }
+
+  async function deleteBudget(id: string) {
+    await supabase.from('budgets').delete().eq('id', id)
+    setBudgets(prev => prev.filter(b => b.id !== id))
+  }
+
+  async function copyBudgetsToMonth(fromMonth: string, toMonth: string) {
+    if (!wallet) return
+    const source = budgets.filter(b => b.month === fromMonth)
+    if (source.length === 0) return
+    const inserts = source.map(b => ({
+      wallet_id:   wallet.id,
+      category_id: b.category_id,
+      month:       toMonth,
+      amount:      b.amount,
+    }))
+    const { data } = await supabase
+      .from('budgets')
+      .upsert(inserts, { onConflict: 'wallet_id,category_id,month', ignoreDuplicates: true })
+      .select()
+    if (data) setBudgets(prev => {
+      const incoming = data as typeof prev
+      const incomingIds = new Set(incoming.map(b => b.category_id + b.month))
+      return [...prev.filter(b => !incomingIds.has(b.category_id + b.month)), ...incoming]
+    })
+  }
+
   async function addRecurring(r: Omit<RecurringPaymentInsert, 'wallet_id'>) {
     if (!wallet) return
     const { data } = await supabase.from('recurring_payments').insert({ ...r, wallet_id: wallet.id }).select().single()
@@ -216,6 +272,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       monthlyIncome, monthlyExpenses, monthlyBalance,
       incomeCategories, expenseCategories, categoryById,
       expensesByCategory, recentTransactions,
+      budgets, currentMonthBudgets,
+      addBudget, updateBudget, deleteBudget, copyBudgetsToMonth,
       addTransaction, updateTransaction, deleteTransaction,
       addCategory, updateCategory, deleteCategory,
       addGoal, addToGoal, deleteGoal,
