@@ -20,12 +20,18 @@ All notable changes to honeyMoney are documented here.
   - Botón "Registrar" inline en desktop (sin FAB flotante)
   - Wallet indicator en sidebar; bottom nav oculto en desktop
 
+- **Pagos recurrentes — Registrar gasto** (`/recurring`)
+  - Cada pago no pagado muestra ahora dos acciones: "Marcar pagado" (solo log) y "Registrar gasto" (crea transacción de gasto + marca pagado en un paso)
+  - Sheet de categoría con pre-selección automática por coincidencia de color; fecha de la transacción usa el `día de cobro` del mes seleccionado
+  - Navegador de meses sin bloqueo: ahora permite avanzar a meses futuros
+
 ### Changed
 - `Layout.tsx` — soporte responsivo completo (mobile + desktop)
 - `FinanceContext` — añade estado `budgets`, `currentMonthBudgets`, acciones `addBudget`, `updateBudget`, `deleteBudget`, `copyBudgetsToMonth`; suscripción Realtime a tabla `budgets`
 - `src/utils/format.ts` — añade helper `monthKey(date)`
 - `src/types/index.ts` — añade interfaces `Budget` y `BudgetInsert`
 - Tabs de navegación renombradas: "Movimientos" → "Gastos" (label mobile), "Ppto." (label mobile presupuesto)
+- `RecurringPage` — botón "›" desbloqueado para meses futuros; pill de acción dividido en "Marcar pagado" / "Registrar gasto"
 
 ### Database
 - Nueva tabla `budgets` con constraint único `(wallet_id, category_id, month)`
