@@ -119,3 +119,19 @@ export interface RecurringPaymentInsert {
   icon: string
   color_hex: string
 }
+
+export interface Budget {
+  id: string
+  wallet_id: string
+  category_id: string
+  month: string // 'YYYY-MM'
+  amount: number
+  created_at?: string
+}
+
+export interface BudgetInsert {
+  wallet_id: string
+  category_id: string
+  month: string
+  amount: number
+}

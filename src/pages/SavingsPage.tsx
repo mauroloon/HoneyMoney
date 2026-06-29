@@ -13,8 +13,8 @@ export default function SavingsPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
-        <div className="px-4 pt-4 space-y-4">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-8">
+        <div className="px-4 pt-4 space-y-4 md:px-8 md:pt-6">
           {savingsGoals.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="text-6xl mb-4">🎯</div>
@@ -28,7 +28,7 @@ export default function SavingsPage() {
               </button>
             </div>
           ) : (
-            savingsGoals.map(goal => {
+            <div className="md:grid md:grid-cols-2 md:gap-4 space-y-4 md:space-y-0">{savingsGoals.map(goal => {
               const progress = goal.target_amount > 0 ? Math.min(goal.current_amount / goal.target_amount, 1) : 0
               const pct = Math.round(progress * 100)
               const remaining = Math.max(goal.target_amount - goal.current_amount, 0)
@@ -109,7 +109,7 @@ export default function SavingsPage() {
                   )}
                 </div>
               )
-            })
+            })}</div>
           )}
         </div>
       </div>
@@ -118,7 +118,7 @@ export default function SavingsPage() {
       {savingsGoals.length > 0 && (
         <button
           onClick={() => setShowAdd(true)}
-          className="fixed bottom-24 right-5 w-14 h-14 bg-primary text-white rounded-full shadow-fab flex items-center justify-center z-10"
+          className="fixed bottom-24 right-5 w-14 h-14 bg-primary text-white rounded-full shadow-fab flex items-center justify-center z-10 md:bottom-8 md:right-8"
         >
           <Plus size={24} />
         </button>
