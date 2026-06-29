@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Check, ChevronLeft, ChevronRight, ReceiptText } f
 import { useAuth } from '../contexts/AuthContext'
 import { useWallet } from '../contexts/WalletContext'
 import { useFinance } from '../contexts/FinanceContext'
-import { formatCLP, formatMonthYear } from '../utils/format'
+import { formatCLP, formatMonthYear, localDateStr } from '../utils/format'
 import { sfToEmoji, PRESET_COLORS } from '../utils/icons'
 import { RecurringPayment, Category } from '../types'
 
@@ -302,7 +302,7 @@ function RegisterModal({ payment, selectedMonth, monthKey, onClose }: {
   // Use payment's day_of_month clamped to month length
   const lastDay = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate()
   const txDate  = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), Math.min(payment.day_of_month, lastDay))
-  const dateStr = txDate.toISOString().split('T')[0]
+  const dateStr = localDateStr(txDate)
 
   async function handleConfirm() {
     if (!selectedCat || !user || !wallet) return

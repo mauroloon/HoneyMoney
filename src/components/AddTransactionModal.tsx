@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useWallet } from '../contexts/WalletContext'
 import { useFinance } from '../contexts/FinanceContext'
-import { formatCLP } from '../utils/format'
+import { formatCLP, localDateStr } from '../utils/format'
 import { sfToEmoji } from '../utils/icons'
 import { TransactionType, Category, Transaction } from '../types'
 
@@ -21,7 +21,7 @@ export default function AddTransactionModal({ onClose, transaction }: Props) {
     transaction ? (categoryById(transaction.category_id) ?? null) : null
   )
   const [date, setDate]         = useState(
-    transaction ? transaction.date.split('T')[0] : new Date().toISOString().split('T')[0]
+    transaction ? transaction.date.split('T')[0] : localDateStr()
   )
   const [note, setNote]         = useState(transaction?.note ?? '')
   const [saving, setSaving]     = useState(false)
